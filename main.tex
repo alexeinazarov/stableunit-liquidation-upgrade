@@ -18,6 +18,7 @@
 \usepackage{colortbl}
 \usepackage{enumitem}
 \usepackage[table]{xcolor}
+\usepackage{bookmark}
 
 \usepackage{listings}
 \lstset{
@@ -39,8 +40,9 @@
   citecolor=blue!60!black,
   urlcolor =blue!60!black
 }
+\pdfstringdefDisableCommands{\let\secref\ref}
 % clickable §<number> references
-\newcommand{\secref}[1]{\hyperref[#1]{\S\ref*{#1}}}
+\newcommand{\secref}[1]{§\hyperref[#1]{\ref*{#1}}}
 
 \usepackage{tocloft}
 \setlength{\cftbeforesecskip}{6pt}
@@ -109,7 +111,7 @@ The StableUnit protocol \parencite{stableunit2025spec} provides a heuristic liqu
 \toprule
 \textbf{StableUnit Specification} & \textbf{Improved Design (This Work)} \\
 \midrule
-“Liquidations are done through market sales.” & \secref{sec:tranch}–\secref{sec:auction}: replaced with liquidity-aware tranching and sealed-bid auctions to reduce price impact. \\
+“Liquidations are done through market sales.” & \secref{sec:tranch} –- \secref{sec:auction}: replaced with liquidity-aware tranching and sealed-bid auctions to reduce price impact. \\
 “Price has a discount that gets bigger per block.” & \secref{sec:reserve}: replaced by fixed 99.9\% VaR haircut $(1 - \delta)$ to avoid spiral discounting. \\
 “Liquidator has 60 seconds to sell the collateral.” & \secref{sec:tranch}: 60-second window formalised using a rotating 21-slot queue with congestion-aware timing and slashing. \\
 “Trader bot monitors isLiquidateble().” & \secref{sec:bots}: architecture explicitly splits into \textit{Trigger bot} and \textit{Fill bot}, clarifying role separation. \\
