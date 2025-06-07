@@ -39,6 +39,8 @@
   citecolor=blue!60!black,
   urlcolor =blue!60!black
 }
+% clickable §<number> references
+\newcommand{\secref}[1]{\hyperref[#1]{\S\ref*{#1}}}
 
 \usepackage{tocloft}
 \setlength{\cftbeforesecskip}{6pt}
@@ -107,16 +109,16 @@ The StableUnit protocol \parencite{stableunit2025spec} provides a heuristic liqu
 \toprule
 \textbf{StableUnit Specification} & \textbf{Improved Design (This Work)} \\
 \midrule
-“Liquidations are done through market sales.” & §\ref{sec:tranch}–\ref{sec:auction}: replaced with liquidity-aware tranching and sealed-bid auctions to reduce price impact. \\
-“Price has a discount that gets bigger per block.” & §\ref{sec:reserve}: replaced by fixed 99.9\% VaR haircut $(1 - \delta)$ to avoid spiral discounting. \\
-“Liquidator has 60 seconds to sell the collateral.” & §\ref{sec:tranch}: 60-second window formalised using a rotating 21-slot queue with congestion-aware timing and slashing. \\
-“Trader bot monitors isLiquidateble().” & §\ref{sec:bots}: architecture explicitly splits into \textit{Trigger bot} and \textit{Fill bot}, clarifying role separation. \\
-“Whitelist of stablecoins … to exchange the collateral.” & §\ref{sec:reserve}: wrapped in zk-attested three-oracle median to defend against price feed manipulation. \\
-“Risks … cascade liquidation … chain reaction.” & §\ref{sec:stress}: introduces $\kappa\sigma$ stress detection and GARCH-based volatility triggers. \\
-“Bot uses AAVE’s Flashloans.” & §\ref{sec:tranch}: tranche size $Q_i$ adapts to $\text{Depth}_{1\%}$, mitigating flash-loan risk if liquidity vanishes. \\
-“Caller receives 0.1\% of the collateral.” & §\ref{sec:auction}: replaced with 2nd-price auction + 1\% refundable bond to reduce protocol cost by 22\% \parencite{tian2025defi}. \\
-“No other liquidator has the right to buy … 60 seconds.” & §\ref{sec:auction} + Code listing: commit-reveal removes gas-sniping risk even after exclusivity window. \\
-“Protocol is in no rush to exchange for USD Pro.” &  §\ref{sec:buyback}: formalised buffer mechanism swaps at reserve price and burns USD Pro post-conversion. \\
+“Liquidations are done through market sales.” & \secref{sec:tranch}–\secref{sec:auction}: replaced with liquidity-aware tranching and sealed-bid auctions to reduce price impact. \\
+“Price has a discount that gets bigger per block.” & \secref{sec:reserve}: replaced by fixed 99.9\% VaR haircut $(1 - \delta)$ to avoid spiral discounting. \\
+“Liquidator has 60 seconds to sell the collateral.” & \secref{sec:tranch}: 60-second window formalised using a rotating 21-slot queue with congestion-aware timing and slashing. \\
+“Trader bot monitors isLiquidateble().” & \secref{sec:bots}: architecture explicitly splits into \textit{Trigger bot} and \textit{Fill bot}, clarifying role separation. \\
+“Whitelist of stablecoins … to exchange the collateral.” & \secref{sec:reserve}: wrapped in zk-attested three-oracle median to defend against price feed manipulation. \\
+“Risks … cascade liquidation … chain reaction.” & \secref{sec:stress}: introduces $\kappa\sigma$ stress detection and GARCH-based volatility triggers. \\
+“Bot uses AAVE’s Flashloans.” & \secref{sec:tranch}: tranche size $Q_i$ adapts to $\text{Depth}_{1\%}$, mitigating flash-loan risk if liquidity vanishes. \\
+“Caller receives 0.1\% of the collateral.” & \secref{sec:auction}: replaced with 2nd-price auction + 1\% refundable bond to reduce protocol cost by 22\% \parencite{tian2025defi}. \\
+“No other liquidator has the right to buy … 60 seconds.” & \secref{sec:auction} + Code listing: commit-reveal removes gas-sniping risk even after exclusivity window. \\
+“Protocol is in no rush to exchange for USD Pro.” &  \secref{sec:buyback}: formalised buffer mechanism swaps at reserve price and burns USD Pro post-conversion. \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -139,20 +141,20 @@ Each upgrade responds directly to heuristic or fragile elements in the original 
 \noindent
 \textbf{Core Components:}
 \begin{enumerate}[label=\textbf{\arabic*.},wide, labelindent=0pt]
-  \item \textbf{Stress Regime Detector} (§\ref{sec:stress}): monitors realized volatility and spot/TWAP deviation to trigger auction mode only during cascading conditions.
+  \item \textbf{Stress Regime Detector} (\secref{sec:stress}): monitors realized volatility and spot/TWAP deviation to trigger auction mode only during cascading conditions.
 
-  \item \textbf{Liquidity-Adaptive Tranching} (§\ref{sec:tranch}): converts collateral into execution-sized slices based on real-time AMM depth and volatility, reducing slippage and flash-loan exposure.
+  \item \textbf{Liquidity-Adaptive Tranching} (\secref{sec:tranch}): converts collateral into execution-sized slices based on real-time AMM depth and volatility, reducing slippage and flash-loan exposure.
 
-  \item \textbf{Sealed-Bid Vickrey Auction} (§\ref{sec:auction}): replaces priority gas wars with sealed-bid commitment, bid-bond deterrence, and second-price clearing—eliminating MEV and griefing.
+  \item \textbf{Sealed-Bid Vickrey Auction} (\secref{sec:auction}): replaces priority gas wars with sealed-bid commitment, bid-bond deterrence, and second-price clearing—eliminating MEV and griefing.
 
-  \item \textbf{VaR-Driven Reserve Price} (§\ref{sec:reserve}): implements a median-based oracle mechanism with 99.9\% Value-at-Risk haircut, protecting against fire-sale spirals and oracle deviations.
+  \item \textbf{VaR-Driven Reserve Price} (\secref{sec:reserve}): implements a median-based oracle mechanism with 99.9\% Value-at-Risk haircut, protecting against fire-sale spirals and oracle deviations.
 
-  \item \textbf{Trigger–Fill Separation \& Keeper Queue} (§\ref{sec:auction}): formalizes the bot logic from the original spec as a ve-style prioritized 21-slot keeper ring with congestion-aware timing.
+  \item \textbf{Trigger–Fill Separation \& Keeper Queue} (\secref{sec:auction}): formalizes the bot logic from the original spec as a ve-style prioritized 21-slot keeper ring with congestion-aware timing.
 
-  \item \textbf{Contagion Heat-Map \& Cooldowns} (§\ref{sec:contagion}): broadcasts real-time liquidation pressure using $k$-shell decomposition; peers may initiate self-pauses based on outer-shell exposure.
+  \item \textbf{Contagion Heat-Map \& Cooldowns} (\secref{sec:contagion}): broadcasts real-time liquidation pressure using $k$-shell decomposition; peers may initiate self-pauses based on outer-shell exposure.
 
-  \item \textbf{Buyback Pipeline} (§\ref{sec:buyback}): buffers filled stablecoins, converts to USD Pro only at fair market conditions, and burns USD Pro to close debt—improving capital efficiency and transparency.
-  \item \textbf{Governance \& Param Control} (§\ref{sec:governance}): central parameters \((\kappa, Y, \psi, \delta)\) reside in a timelocked config module; supporting notebooks are pinned to Arweave and changes are publicly emitted via \texttt{ParamChange(hash)} events.
+  \item \textbf{Buyback Pipeline} (\secref{sec:buyback}): buffers filled stablecoins, converts to USD Pro only at fair market conditions, and burns USD Pro to close debt—improving capital efficiency and transparency.
+  \item \textbf{Governance \& Param Control} (\secref{sec:governance}): central parameters \((\kappa, Y, \psi, \delta)\) reside in a timelocked config module; supporting notebooks are pinned to Arweave and changes are publicly emitted via \texttt{ParamChange(hash)} events.
 
 \end{enumerate}
 
@@ -210,7 +212,7 @@ Q_i = \min \left[ Q_{\text{rem}},\;
 \qquad \psi = 0.12,\quad \gamma = 2.1.
 \end{equation}
 
-Here, \( \widehat{\sigma}_t \) denotes as in §\ref{sec:stress} the empirical 24-hour realized volatility at time \( t \), and \( \text{Depth}_{1\%} \) refers to the executable on-chain liquidity within a \(\pm 1\%\) band around the mid-price \( P_t \). Formally:
+Here, \( \widehat{\sigma}_t \) denotes as in \secref{sec:stress} the empirical 24-hour realized volatility at time \( t \), and \( \text{Depth}_{1\%} \) refers to the executable on-chain liquidity within a \(\pm 1\%\) band around the mid-price \( P_t \). Formally:
 \[
 \text{Depth}_{1\%} := \min \left(
 \int_{P_t \cdot 0.99}^{P_t \cdot 1.01} \text{SellQty}(p)\,dp,\;
