@@ -41,8 +41,9 @@
   urlcolor =blue!60!black
 }
 \pdfstringdefDisableCommands{\let\secref\ref}
-% clickable §<number> references
-\newcommand{\secref}[1]{§\hyperref[#1]{\ref*{#1}}}
+
+% clickable §<number> references; doesn't work here
+\newcommand{\secref}[1]{\hyperref[#1]{\S\ref*{#1}}}
 
 \usepackage{tocloft}
 \setlength{\cftbeforesecskip}{6pt}
@@ -85,7 +86,7 @@ stablecoins. We combine square-root market-impact theory, central-bank stress
 tests, and reliability-engineering cascade models to design an \emph{institution-grade}
 safety net that (i) suppresses fire-sale feedback, (ii) bounds bad debt at the
 \SI{99.9}{\percent}~VaR level, and (iii) remains fully on-chain auditable.
-A replay of the ETH flash crash on 11~December~2024 shows an
+An indicative backtest of the ETH flash crash on 11~December~2024 shows an
 \textbf{84.6\%} reduction in bad debt versus a \textsc{5\%} fixed-spread
 liquidator while cutting peak price impact by \textbf{10.4} percentage points.
 \end{abstract}
