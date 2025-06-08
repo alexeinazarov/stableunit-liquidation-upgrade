@@ -235,26 +235,29 @@ This module also aligns with the cascade model taxonomy proposed in \textcite{zh
 
 
 %=====================================================================%  
-
-%=====================================================================%  
-\section{Auction mechanics}
+\section{Auction Mechanics and Keeper Incentives}
 \label{sec:auction}
 %=====================================================================%  
 
-The liquidation engine uses a sealed-bid, second-price \parencite{vickrey1961counterspeculation} auction . Truth-telling remains a dominant strategy under this design \parencite{myerson1994bayesian}. Bids are submitted by keeper bots off-chain and revealed on-chain after a fixed delay; the protocol selects the highest eligible bid and settles at the second-highest price.
+The liquidation engine uses a sealed-bid, second-price \parencite{vickrey1961counterspeculation} auction, in which truth-telling is a dominant strategy \parencite{myerson1994bayesian}. Bids are submitted by keeper bots off-chain and revealed on-chain after a delay; the protocol then selects the highest eligible bid and settles at the second-highest price. A 1\% refundable bid bond deters griefing and MEV sniping \parencite{tian2025defi}.
 
+Empirical simulations suggest this auction design reduces liquidation costs by \SI{22}{\percent} compared to fixed-spread execution. To prevent excessive rent extraction, keeper reward is capped at:
+\[
+\text{fee}_{\max} = 0.5\,\delta V,
+\]
+where \( \delta \) is the reserve-price haircut (VaR) and \( V \) is the collateral value.
 
 \begin{itemize}[leftmargin=*]
-\item \textbf{Format} — sealed-bid, second-price; implemented as Vickrey-$\alpha$ mechanism.
-\item \textbf{Bid bond} — \SI{1}{\percent} refundable, deters grief attacks \parencite{tian2025defi}.
-\item \textbf{Reveal window} — $k{=}10$ blocks (\SI{120}{\second}); aligns with Poisson-game equilibrium \parencite{meroni2017games}.
+  \item \textbf{Format} — sealed-bid, second-price (Vickrey-$\alpha$).
+  \item \textbf{Bid bond} — \SI{1}{\percent} refundable.
+  \item \textbf{Reveal window} — $k{=}10$ blocks (\SI{120}{\second}).
 \end{itemize}
 
 Let $\mathcal{B} = \{b_1, \dots, b_n\}$ be the set of valid bids. The clearing price is
 \[
-P_{\text{clear}} = \max\left\{ b_j \in \mathcal{B} \,|\, b_j \geq P_{\text{reserve}},\; b_j \leq b_{(k)} \right\}
+P_{\text{clear}} = \max\left\{ b_j \in \mathcal{B} \,|\, b_j \geq P_{\text{reserve}},\; b_j \leq b_{(k)} \right\},
 \]
-where $b_{(k)}$ denotes the $k$-th highest bid. This selects the largest eligible bid below the $k$-th order statistic, enforcing a bounded winner's curse.
+where $b_{(k)}$ is the $k$-th highest bid. This bounds the winner's curse risk.
 
 \begin{listing}[htbp]
 \begin{lstlisting}[caption={Solidity pseudo-code: auction guard}]
@@ -328,8 +331,6 @@ To ensure robustness against oracle manipulation, the median oracle \( P_{\text{
 where \( \sigma \) denotes the standard deviation across oracle sources \parencite{deng2024safeguarding}. This assumes independent, symmetric noise and supports zk-proof attestations in secure oracle frameworks.
 
 
-
-
 %=====================================================================%  
 \section{Buyback and Debt Repayment}
 \label{sec:buyback}
@@ -347,19 +348,41 @@ Unlike immediate conversion heuristics, this module executes conversion and repa
 This approach improves capital efficiency while reducing slippage.  
 Future enhancements may include deploying protocol-owned liquidity (POL) on Balancer or Uniswap for deeper USD Pro markets.
 
-
-\section{Keeper Incentives}
+%=====================================================================% 
+\section{Keeper Incentives and Bounty Curve}
+\label{sec:keeper}
 %=====================================================================%  
-The protocol uses a sealed-bid, second-price (Vickrey) auction with a 1\% refundable bid bond (see~§\ref{sec:auction}).  
-This design discourages griefing and MEV sniping, while promoting truthful bidding.
 
-Empirical simulations \parencite{tian2025defi} show this mechanism reduces liquidation costs by \SI{22}{\percent} compared to fixed-spread strategies.
-
-To limit opportunistic profit-taking, keeper reward is capped at:
+To align protocol costs with real market execution costs, we propose a diminishing-marginal bounty function:
 \[
-\text{fee}_{\max} = 0.5\,\delta V,
+\text{bounty rate}(V)=\min\!\left[\;\beta,\;\frac{\alpha}{\sqrt{V}}\right],
+\qquad V=\text{vault value in \$}.
 \]
-where \( \delta \) is the reserve-price haircut (VaR) and \( V \) the collateral value.
+This replaces the flat 0.1\% reward currently used in many protocols. It maintains high payout rates for small vaults while curbing excessive rewards for whales.
+
+Governance sets:
+\begin{itemize}[noitemsep,topsep=0pt]
+  \item \( \alpha \): the reference bounty factor (e.g., calibrated so that \( V_0 = \$50,000 \) yields 0.1\%),
+  \item \( \beta \): a hard cap (e.g., 0.25\%) to prevent runaway APRs on micro-vaults.
+\end{itemize}
+
+This form ensures:
+\begin{itemize}[noitemsep,topsep=0pt]
+  \item Bounties grow sublinearly with vault size.
+  \item Marginal outflow to keepers falls as \( 1/\sqrt{V} \).
+  \item Rewards remain competitive across vault sizes without overpaying on large ones.
+\end{itemize}
+
+\paragraph{Implementation.} The curve can be implemented in the keeper module as:
+
+\begin{lstlisting}[caption={Reward curve for vault liquidations}]
+function _bountyRate(uint256 vaultUsd) internal view returns (uint256) {
+    uint256 rate = alphaRay / sqrt(vaultUsd);
+    return rate > betaRay ? betaRay : rate;
+}
+\end{lstlisting}
+
+Empirical benchmarks and governance calibration are discussed in the Appendix.
 
 
 %=====================================================================%  
