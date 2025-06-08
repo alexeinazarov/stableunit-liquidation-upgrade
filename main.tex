@@ -238,7 +238,8 @@ This module also aligns with the cascade model taxonomy proposed in \textcite{zh
 \label{sec:auction}
 %=====================================================================%  
 
-The liquidation engine uses a sealed-bid, second-price (Vickrey) auction. Truth-telling remains a dominant strategy under this design \parencite{myerson1994bayesian}.
+The liquidation engine uses a sealed-bid, second-price (Vickrey) auction \parencite{vickrey1961counterspeculation}. Truth-telling remains a dominant strategy under this design \parencite{myerson1994bayesian}. Bids are submitted by keeper bots off-chain and revealed on-chain after a fixed delay; the protocol selects the highest eligible bid and settles at the second-highest price.
+
 
 \begin{itemize}[leftmargin=*]
 \item \textbf{Format} — sealed-bid, second-price; implemented as Vickrey-$\alpha$ mechanism.
