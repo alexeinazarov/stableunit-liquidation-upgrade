@@ -10,6 +10,9 @@
 % Load microtype *before* hyperref for better results
 \usepackage{microtype}
 \usepackage{float}
+\floatstyle{ruled}
+\newfloat{listing}{htbp}{lop}
+\floatname{listing}{Listing}
 
 \usepackage{xcolor}
 \usepackage{amsmath,amssymb,amsfonts,mathtools}
@@ -238,7 +241,7 @@ This module also aligns with the cascade model taxonomy proposed in \textcite{zh
 \label{sec:auction}
 %=====================================================================%  
 
-The liquidation engine uses a sealed-bid, second-price (Vickrey) auction \parencite{vickrey1961counterspeculation}. Truth-telling remains a dominant strategy under this design \parencite{myerson1994bayesian}. Bids are submitted by keeper bots off-chain and revealed on-chain after a fixed delay; the protocol selects the highest eligible bid and settles at the second-highest price.
+The liquidation engine uses a sealed-bid, second-price \parencite{vickrey1961counterspeculation} auction . Truth-telling remains a dominant strategy under this design \parencite{myerson1994bayesian}. Bids are submitted by keeper bots off-chain and revealed on-chain after a fixed delay; the protocol selects the highest eligible bid and settles at the second-highest price.
 
 
 \begin{itemize}[leftmargin=*]
@@ -253,6 +256,7 @@ P_{\text{clear}} = \max\left\{ b_j \in \mathcal{B} \,|\, b_j \geq P_{\text{reser
 \]
 where $b_{(k)}$ denotes the $k$-th highest bid. This selects the largest eligible bid below the $k$-th order statistic, enforcing a bounded winner's curse.
 
+\begin{listing}[htbp]
 \begin{lstlisting}[caption={Solidity pseudo-code: auction guard}]
 function fillOrder(uint id, uint bidPrice) external payable {
     require(msg.value >= 0.01 ether);            // 1 % bond
@@ -261,7 +265,7 @@ function fillOrder(uint id, uint bidPrice) external payable {
     ...
 }
 \end{lstlisting}
-
+\end{listing}
 
 %=====================================================================%  
 \section{Trigger–Fill Separation and Keeper Prioritisation}
