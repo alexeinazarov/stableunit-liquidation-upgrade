@@ -278,18 +278,20 @@ Each CDP is hashed to one of 21 keeper slots. Missed fills trigger a slashing pe
 
 \medskip
 
-To make this precise, we model the keeper selection as:
+To make this precise, we model keeper selection as:
 \begin{align*}
 &\text{TriggerBot}(t) \in \mathbb{B} \text{ monitors } \texttt{isLiquidatablePosition}, \\
-&\text{FillBot}_k(t) = \arg\max_{j \in[1,21]} \text{VP}_j(t) \quad \text{(ve-staked priority)}.
+&\text{FillBot}_k(t) = \arg\max_{j \in[1,21]} \text{VP}_j(t) \quad \text{(ve-priority)}.
 \end{align*}
-Here, $\mathbb{B}$ is the keeper bot set, and \( \text{VP}_j(t) \) is time-dependent voting power.
+Here, \( \mathbb{B} \) is the keeper bot set, and \( \text{VP}_j(t) = \text{stake}_j \cdot f(T_j) \) denotes voting power from ve-style staking, where \( f(T_j) \) increases with lock duration (e.g. \( f(T_j) = T_j / T_{\max} \)).
 
 To reflect load-driven latency, expected fill time decays with active TVL:
 \[
 \mathbb{E}[\tau_{\text{fill}}] = 60\,\text{s} \cdot \exp\left(-\lambda \sum \text{TVL}_{\text{active}}\right).
 \]
-This extends the basic exclusivity mechanism of \textcite{stableunit2025spec} with congestion-aware timing.
+This extends the exclusivity model of \textcite{stableunit2025spec} with congestion-aware timing.
+
+
 
 
 %=====================================================================%  
