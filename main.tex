@@ -273,7 +273,7 @@ Inspired by StableUnit’s dual-bot architecture \parencite{stableunit2025spec},
   \item \textbf{Fill bot} — a keeper from a ranked staking queue, with a \SI{60}{\second} exclusive execution window.
 \end{enumerate}
 
-Priority is assigned using SuDAO's ve-style staking model.  
+Priority is assigned using SuDAO's vote-escrow (ve-style) staking model, where keeper eligibility increases with lock duration and stake amount. 
 Each CDP is hashed to one of 21 keeper slots. Missed fills trigger a slashing penalty of \SI{10}{\percent} of current voting power.
 
 \medskip
