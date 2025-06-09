@@ -227,7 +227,7 @@ Here, \( \widehat{\sigma}_t \) denotes as in \secref{sec:stress} the empirical 2
 \int_{P_t \cdot 0.99}^{P_t \cdot 1.01} \text{BuyQty}(p)\,dp
 \right),
 \]
-where \( \text{SellQty}(p) \) and \( \text{BuyQty}(p) \) represent the quantity available at price level \( p \) from automated market makers (AMMs).\footnote{On Uniswap V3, this corresponds to simulating a swap via the \texttt{quoter.quoteExactInputSingle()} method across the \(\pm1\%\) price range and summing executable ticks on both sides of the pool \parencite{uniswap-v3-quoter-docs}.}
+where \( \text{SellQty}(p) \) and \( \text{BuyQty}(p) \) represent the quantity available at price level \( p \) from automated market makers (AMMs).\footnote{On Uniswap V3, this corresponds to simulating a swap via the \texttt{quoter.quoteExactInputSingle()} method across the \(\pm1\%\) price range and summing executable ticks on both sides of the pool \parencite{uniswap-v3-quoter-docs}.}
 
 As shown in \textcite{almgren2000optimal}, execution cost scales with \( \sqrt{Q} \), making tranche-based execution significantly more efficient. Quarter-slicing reduces expected slippage by nearly 50\% in typical AMM conditions.  
 Reinforcement learning (RL)-based dynamic adjustments \parencite{zhang2023adaptive} are theoretically compatible and may be proposed for deployement.  
