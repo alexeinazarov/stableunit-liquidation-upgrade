@@ -308,10 +308,10 @@ This extends the exclusivity model of \textcite{stableunit2025spec} with congest
 \section{Reserve price \& oracle integrity}
 \label{sec:reserve}
 %=====================================================================%  
-To enhance resilience against manipulation and outages, we recommend periodically revisiting the selected oracle ensemble \parencite{deng2024safeguarding}. Let \(\mathcal{O}_t = \{O_{1}, O_{2}, \dots, O_{n}\}\) be the approved oracle set at time \(t\). We define the reserve price as:
+To enhance resilience against manipulation and outages, we recommend periodically revisiting the selected oracle ensemble \parencite{deng2024safeguarding}. Let \(\mathcal{O}_t = \{O_{1}, O_{2}, \dots, O_{n}\}\) be the approved oracle set at time \(t\). Following \textcite{eskandari2021sok} we define the reserve price as the median oracle:
 
 \[
-P_{\text{reserve}} = \operatorname*{median}_{i \in \mathcal{O}_t} \left[ P_{O_i} \right] \cdot (1 - \delta),
+P_{\text{reserve}} = \operatorname*{median}_{O \in \mathcal{O}_t} \left[ P_{O} \right] \cdot (1 - \delta),
 \]
 where $\delta$ is a \SI{99.9}{\percent} Value-at-Risk (VaR) haircut: majors $\delta = 2.3\%$, long-tail $\delta = 5.7\%$ according to \parencite[Fig.~10]{tian2025defi}.
 
@@ -323,11 +323,11 @@ where \( L \) is the liquidation loss random variable, and \( V \) is collateral
 
 \medskip
 
-To ensure robustness against oracle manipulation, the median oracle \( P_{\text{median}} \) is adopted \parencite{eskandari2021sok}. Its statistical deviation from the true value can be bounded as:
+The median operator is preferred for aggregation, as its deviation from the true price satisfies:
 \[
 \Pr\left(\left| P_{\text{median}} - P_{\text{true}} \right| > \epsilon\right) \leq 2\Phi\left(-\frac{\epsilon\sqrt{3}}{\sigma}\right),
 \]
-where \( \sigma \) denotes the standard deviation across oracle sources \parencite{deng2024safeguarding}. This assumes independent, symmetric noise and supports zk-proof attestations in secure oracle frameworks.
+where \( \sigma \) denotes the standard deviation across oracle sources \parencite{eskandari2021sok}. This assumes independent, symmetric noise and supports zk-proof attestations in secure oracle frameworks.
 
 
 %=====================================================================%  
