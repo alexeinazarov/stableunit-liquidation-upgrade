@@ -308,13 +308,10 @@ This extends the exclusivity model of \textcite{stableunit2025spec} with congest
 \section{Reserve price \& oracle integrity}
 \label{sec:reserve}
 %=====================================================================%  
+To enhance resilience against manipulation and outages, we recommend periodically revisiting the selected oracle ensemble \parencite{deng2024safeguarding}. Let \(\mathcal{O}_t = \{O_{1}, O_{2}, \dots, O_{n}\}\) be the approved oracle set at time \(t\). We define the reserve price as:
+
 \[
-P_{\text{reserve}} =
-\operatorname*{median}\left[
-P_{\text{Chainlink}},\,
-P_{\text{Pyth}},\,
-P_{\text{RedStone}}
-\right] (1 - \delta),
+P_{\text{reserve}} = \operatorname*{median}_{i \in \mathcal{O}_t} \left[ P_{O_i} \right] \cdot (1 - \delta),
 \]
 where $\delta$ is a \SI{99.9}{\percent} Value-at-Risk (VaR) haircut: majors $\delta = 2.3\%$, long-tail $\delta = 5.7\%$ according to \parencite[Fig.~10]{tian2025defi}.
 
