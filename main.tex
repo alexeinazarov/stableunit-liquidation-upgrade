@@ -227,7 +227,7 @@ Here, \( \widehat{\sigma}_t \) denotes as in \secref{sec:stress} the empirical 2
 \int_{P_t \cdot 0.99}^{P_t \cdot 1.01} \text{BuyQty}(p)\,dp
 \right),
 \]
-where \( \text{SellQty}(p) \) and \( \text{BuyQty}(p) \) represent the quantity available at price level \( p \) from automated market makers (AMMs).\footnote{On Uniswap v3, this corresponds to simulating a swap via \texttt{quoter.quoteExactInputSingle()} across the \(\pm 1\%\) range and summing executable ticks on both sides of the pool.}
+where \( \text{SellQty}(p) \) and \( \text{BuyQty}(p) \) represent the quantity available at price level \( p \) from automated market makers (AMMs).\footnote{On Uniswap V3, this corresponds to simulating a swap via the \texttt{quoter.quoteExactInputSingle()} method across the \(\pm1\%\) price range and summing executable ticks on both sides of the pool \parencite{uniswap-v3-quoter-docs}.}
 
 As shown in \textcite{almgren2000optimal}, execution cost scales with \( \sqrt{Q} \), making tranche-based execution significantly more efficient. Quarter-slicing reduces expected slippage by nearly 50\% in typical AMM conditions.  
 Reinforcement learning (RL)-based dynamic adjustments \parencite{zhang2023adaptive} are theoretically compatible and may be proposed for deployement.  
@@ -241,7 +241,9 @@ This module also aligns with the cascade model taxonomy proposed in \textcite{zh
 \label{sec:auction}
 %=====================================================================%  
 
-The liquidation engine uses a sealed-bid, second-price \parencite{vickrey1961counterspeculation} auction, in which truth-telling is a dominant strategy \parencite{myerson1994bayesian}. Bids are submitted by keeper bots off-chain and revealed on-chain after a delay; the protocol then selects the highest eligible bid and settles at the second-highest price. A 1\% refundable bid bond deters griefing and MEV sniping \parencite{tian2025defi}.
+Recent empirical work shows a clear shift in DeFi from fixed-spread mechanisms—such as those used by Aave and Compound \parencite{aave-liquidation-docs, compound-liquidation-docs}—toward \textbf{auction-based liquidations}, exemplified by MakerDAO’s \textit{tend–dent} auction \parencite{makerdao-auctions-docs}. These auctions yield \textbf{approximately 80\% lower on-chain price impact} and significantly reduce contagion risk by incentivizing liquidator competition.
+
+We formalize the liquidation mechanism as a sealed-bid, second-price auction \parencite{vickrey1961counterspeculation}, in which truth-telling is a dominant strategy \parencite{myerson1994bayesian}, to minimize winner’s curse and MEV risk. Bids are submitted by keeper bots off-chain and revealed on-chain after a delay; the protocol then selects the highest eligible bid and settles at the second-highest price. A 1\% refundable bid bond deters griefing and MEV sniping \parencite{tian2025defi}.
 
 Empirical simulations suggest this auction design reduces liquidation costs by \SI{22}{\percent} compared to fixed-spread execution. To prevent excessive rent extraction, keeper reward is capped at:
 \[
