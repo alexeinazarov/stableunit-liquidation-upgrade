@@ -241,7 +241,7 @@ This module also aligns with the cascade model taxonomy proposed in \textcite{zh
 \label{sec:auction}
 %=====================================================================%  
 
-Recent empirical work shows a clear shift in DeFi from fixed-spread mechanisms—such as those used by Aave and Compound \parencite{aave-liquidation-docs, compound-liquidation-docs}—toward \textbf{auction-based liquidations}, exemplified by MakerDAO’s \textit{tend–dent} auction \parencite{makerdao-auctions-docs}. These auctions yield \textbf{approximately 80\% lower on-chain price impact} and significantly reduce contagion risk by incentivizing liquidator competition.
+Recent empirical work shows a clear shift in DeFi from fixed-spread mechanisms—such as those used by Aave and Compound \parencite{aave-liquidation-docs, compound-liquidation-docs}—toward \textbf{auction-based liquidations}, exemplified by MakerDAO’s \textit{tend–dent} auction \parencite{makerdao-auctions-docs}. These auctions yield \textbf{approximately 80\% lower on-chain price impact} and significantly reduce contagion risk by incentivizing liquidator competition. Chainlink’s Smart Value Recapture (SVR) \parencite{chainlink-svr-2024} complements this trend by integrating oracle-driven pre-auctions to internalize MEV during liquidation events.
 
 We formalize the liquidation mechanism as a sealed-bid, second-price auction \parencite{vickrey1961counterspeculation}, in which truth-telling is a dominant strategy \parencite{myerson1994bayesian}, to minimize winner’s curse and MEV risk. Bids are submitted by keeper bots off-chain and revealed on-chain after a delay; the protocol then selects the highest eligible bid and settles at the second-highest price. A 1\% refundable bid bond deters griefing and MEV sniping \parencite{tian2025defi}.
 
@@ -304,8 +304,6 @@ To reflect load-driven latency, expected fill time decays with active TVL:
 This extends the exclusivity model of \textcite{stableunit2025spec} with congestion-aware timing.
 
 
-
-
 %=====================================================================%  
 \section{Reserve price \& oracle integrity}
 \label{sec:reserve}
@@ -356,13 +354,14 @@ Future enhancements may include deploying protocol-owned liquidity (POL) on Bala
 \section{Keeper Incentives and Bounty Curve}
 \label{sec:keeper}
 %=====================================================================%  
+Recent protocols \parencite{aave-liquidation-docs, llama-parameters, compound-liquidation-docs, makerdao-auctions-docs} continue to rely on flat liquidation incentives. Simulated improvements to responsiveness via size-aware tips have been explored in \textcite{kirillov2022stablesims}.
 
-To align protocol costs with real market execution costs, we propose a diminishing-marginal bounty function:
+In this work, to align protocol costs more closely with execution realities, we propose a size-sensitive marginal bounty schedule:
 \[
 \text{bounty rate}(V)=\min\!\left[\;\beta,\;\frac{\alpha}{\sqrt{V}}\right],
 \qquad V=\text{vault value in \$}.
 \]
-This replaces the flat 0.1\% reward currently used in many protocols. It maintains high payout rates for small vaults while curbing excessive rewards for whales.
+This formulation preserves strong incentives for small vaults while naturally tapering payouts on large positions, challenging the historical skew toward whales in favor of strengthening protocol reserves.
 
 Governance sets:
 \begin{itemize}[noitemsep,topsep=0pt]
