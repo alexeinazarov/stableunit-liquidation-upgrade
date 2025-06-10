@@ -241,7 +241,7 @@ This module also aligns with the cascade model taxonomy proposed in \textcite{zh
 \label{sec:auction}
 %=====================================================================%  
 
-Recent empirical work shows a clear shift in DeFi from fixed-spread mechanisms—such as those used by Aave and Compound \parencite{aave-liquidation-docs, compound-liquidation-docs}—toward \textbf{auction-based liquidations}, exemplified by MakerDAO’s \textit{tend–dent} auction \parencite{makerdao-auctions-docs}. These auctions yield \textbf{approximately 80\% lower on-chain price impact} and significantly reduce contagion risk by incentivizing liquidator competition. Chainlink’s Smart Value Recapture (SVR) \parencite{chainlink-svr-2024} complements this trend by integrating oracle-driven pre-auctions to internalize MEV during liquidation events.
+Recent empirical work shows a clear shift in DeFi from fixed-spread mechanisms—such as those used by Aave and Compound \parencite{aave-liquidation-docs, compound-liquidation-docs}—toward \textbf{auction-based liquidations}, exemplified by MakerDAO’s \textit{tend–dent} auction \parencite{makerdao-auctions-docs}. These auctions yield \textbf{approximately 80\% lower on-chain price impact} and significantly reduce contagion risk by incentivizing liquidator competition. Chainlink’s Smart Value Recapture (SVR) \parencite{chainlink2025svr} complements this trend by integrating oracle-driven pre-auctions to internalize MEV during liquidation events.
 
 We formalize the liquidation mechanism as a sealed-bid, second-price auction \parencite{vickrey1961counterspeculation}, in which truth-telling is a dominant strategy \parencite{myerson1994bayesian}, to minimize winner’s curse and MEV risk. Bids are submitted by keeper bots off-chain and revealed on-chain after a delay; the protocol then selects the highest eligible bid and settles at the second-highest price. A 1\% refundable bid bond deters griefing and MEV sniping \parencite{tian2025defi}.
 
@@ -308,18 +308,20 @@ This extends the exclusivity model of \textcite{stableunit2025spec} with congest
 \section{Reserve price \& oracle integrity}
 \label{sec:reserve}
 %=====================================================================%  
-To enhance resilience against manipulation and outages, we recommend periodically revisiting the selected oracle ensemble \parencite{deng2024safeguarding}. Let \(\mathcal{O}_t = \{O_{1}, O_{2}, \dots, O_{n}\}\) be the approved oracle set at time \(t\). Following \textcite{eskandari2021sok} we define the reserve price as the median oracle:
+To enhance resilience against manipulation and outages, we recommend periodically revisiting the selected oracle ensemble \parencite{deng2024safeguarding}. Let \(\mathcal{O}_t = \{O_{1}, O_{2}, \dots, O_{n}\}\) be the approved oracle set at time \(t\). Following \textcite{eskandari2021sok} we define the reserve price as a risk-adjusted median oracle:
 
 \[
-P_{\text{reserve}} = \operatorname*{median}_{O \in \mathcal{O}_t} \left[ P_{O} \right] \cdot (1 - \delta),
+P_{\text{reserve}} = \operatorname*{median}_{O \in \mathcal{O}_t} \left[ P_{O} \right] \cdot (1 - \delta_{\text{VaR}, \alpha}),
 \]
-where $\delta$ is a \SI{99.9}{\percent} Value-at-Risk (VaR) haircut: majors $\delta = 2.3\%$, long-tail $\delta = 5.7\%$ according to \parencite[Fig.~10]{tian2025defi}.
+where \(\delta_{\text{VaR}, \alpha}\) is a Value-at-Risk (VaR)-derived haircut at confidence level \(\alpha \in (0,1)\).\footnote{Empirically, \(\delta_{\text{VaR}, 0.999} = 2.3\%\) for core crypto assets and \(5.7\%\) for long-tail tokens, based on the worst 0.1\% of historical oracle delay scenarios \parencite[Fig.~10]{tian2025defi}.}
+
+\medskip
 
 To formalise this:
 \[
-\delta_{\text{VaR}} = \inf\left\{ d \in \mathbb{R}^+ : \Pr\left(L > d \cdot V\right) \leq 0.001 \right\}
+\delta_{\text{VaR}, \alpha} = \inf\left\{ d \in \mathbb{R}^+ : \Pr\left(L > d \cdot V\right) \leq 1 - \alpha \right\},
 \]
-where \( L \) is the liquidation loss random variable, and \( V \) is collateral value.
+where \( L \) is the liquidation loss random variable, and \( V \) is collateral value.\parencite{bcbs_marketrisk_2019}.\footnote{While formally defined by Basel III \parencite{bcbs_marketrisk_2019}, the application of VaR in DeFi is still evolving. Chainlink has proposed a percentile-based liquidation risk model \parencite{chainlink2025svr}, and LlamaRisk has independently applied it in the context of Aave's SVR integration proposal \parencite{llamarisk2025svrreview}, which remains under community review.}
 
 \medskip
 
@@ -327,7 +329,7 @@ The median operator is preferred for aggregation, as its deviation from the true
 \[
 \Pr\left(\left| P_{\text{median}} - P_{\text{true}} \right| > \epsilon\right) \leq 2\Phi\left(-\frac{\epsilon\sqrt{3}}{\sigma}\right),
 \]
-where \( \sigma \) denotes the standard deviation across oracle sources \parencite{eskandari2021sok}. This assumes independent, symmetric noise and supports zk-proof attestations in secure oracle frameworks.
+where \( \sigma \) denotes the standard deviation across oracle sources \parencite{eskandari2021sok}. This assumes independent, symmetric noise and facilitates zk-verifiable aggregation within secure oracle frameworks.
 
 
 %=====================================================================%  
@@ -351,7 +353,7 @@ Future enhancements may include deploying protocol-owned liquidity (POL) on Bala
 \section{Keeper Incentives and Bounty Curve}
 \label{sec:keeper}
 %=====================================================================%  
-Recent protocols \parencite{aave-liquidation-docs, llama-parameters, compound-liquidation-docs, makerdao-auctions-docs} continue to rely on flat liquidation incentives. Simulated improvements to responsiveness via size-aware tips have been explored in \textcite{kirillov2022stablesims}.
+Recent protocols \parencite{aave-liquidation-docs, aave2025_parameters, compound-liquidation-docs, makerdao-auctions-docs} continue to rely on flat liquidation incentives. Simulated improvements to responsiveness via size-aware tips have been explored in \textcite{kirillov2022stablesims}.
 
 In this work, to align protocol costs more closely with execution realities, we propose a size-sensitive marginal bounty schedule:
 \[
