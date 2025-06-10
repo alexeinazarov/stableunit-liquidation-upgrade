@@ -246,9 +246,10 @@ Recent empirical work shows a clear shift in DeFi from fixed-spread mechanismsâ€
 We formalize the liquidation mechanism as a sealed-bid, second-price auction \parencite{vickrey1961counterspeculation}, in which truth-telling is a dominant strategy \parencite{myerson1994bayesian}, to minimize winnerâ€™s curse and MEV risk. Bids are submitted by keeper bots off-chain and revealed on-chain after a delay; the protocol then selects the highest eligible bid and settles at the second-highest price. A 1\% refundable bid bond deters griefing and MEV sniping \parencite{tian2025defi}.
 
 Empirical simulations suggest this auction design reduces liquidation costs by \SI{22}{\percent} compared to fixed-spread execution. To prevent excessive rent extraction, keeper reward is capped at:
-\[
-\text{fee}_{\max} = 0.5\,\(\delta_{\text{VaR}}\) V,
-\]
+\begin{equation}
+\text{fee}_{\max} = 0.5\, \delta_{\text{VaR}}\, V
+\end{equation}
+
 where \(\delta_{\text{VaR}}\) is a Value-at-Risk-derived haircut defined in \secref{sec:reserve} and \( V \) is the collateral value.
 
 \begin{itemize}[leftmargin=*]
@@ -329,7 +330,7 @@ where \(W_t\) is standard Brownian motion, \(N_t\) is a Poisson process with int
 \[
 L = \max\left(0, V - Q \cdot P_t e^{Z_T} \right),
 \]
-where \(Z_T\) is the total log return  (as defined in \secref{sec:stress}) over the liquidation horizon \(T\). The VaR-derived haircut \(\delta_{\text{VaR}, \alpha}\) is estimated numerically via Monte Carlo or saddlepoint approximation of the distribution of \(Z_T\) \parencite{kou2002jump}.}, and \( V \) is collateral value.\parencite{bcbs_marketrisk_2019}.\footnote{While formally defined by Basel III \parencite{bcbs_marketrisk_2019}, the application of VaR in DeFi is still evolving. Chainlink has proposed a percentile-based liquidation risk model \parencite{chainlink2025svr}, and LlamaRisk has independently applied it in the context of Aave's SVR integration proposal \parencite{llamarisk2025svrreview}, which remains under community review.}
+where \(Z_T\) is the total log return  (as defined in \secref{sec:stress}) over the liquidation horizon \(T\). The VaR-derived haircut \(\delta_{\text{VaR}, \alpha}\) is estimated numerically via Monte Carlo or saddlepoint approximation of the distribution of \(Z_T\) \parencite{kou2002jump}.}, and \( V \) is collateral value.\parencite{bcbs_marketrisk_2019}.\footnote{While the use of Value-at-Risk (VaR) is mandated in traditional finance under Basel III \parencite{bcbs_baselIII_2017}, its application in DeFi protocols remains experimental. Chainlink has proposed a percentile-based liquidation risk model \parencite{chainlink2025svr}, and LlamaRisk has independently applied it in the context of Aave's SVR integration proposal \parencite{llamarisk2025svrreview}, which remains under community review.}
 
 \medskip
 
