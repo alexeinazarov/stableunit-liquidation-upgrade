@@ -362,7 +362,7 @@ Future enhancements may include deploying protocol-owned liquidity (POL) on Bala
 \section{Keeper Incentives and Bounty Curve}
 \label{sec:keeper}
 %=====================================================================%  
-Recent protocols \parencite{aave-liquidation-docs, aave2025_parameters, compound-liquidation-docs, makerdao-auctions-docs} continue to rely on flat liquidation incentives. Simulated improvements to responsiveness via size-aware tips have been explored in \textcite{kirillov2022stablesims}.
+Recent protocols \parencite{aave-liquidation-docs, compound-liquidation-docs, makerdao-auctions-docs} continue to rely on flat liquidation incentives. Simulated improvements to responsiveness via size-aware tips have been explored in \textcite{kirillov2022stablesims}.
 
 In this work, to align protocol costs more closely with execution realities, we propose a size-sensitive marginal bounty schedule:
 \[
@@ -400,10 +400,13 @@ Empirical benchmarks and governance calibration are discussed in the Appendix.
 \section{Cross-protocol contagion defence}
 \label{sec:contagion}
 %=====================================================================%  
-Signed JSON heat-maps report live liquidation pressure.  
-Peers may impose a \SIrange{60}{120}{\second} cooldown to prevent feedback loops.  
-Criticality is computed using $k$-shell decomposition \parencite{battiston2016debtrank};  
-if outer-shell exposure exceeds \SI{5}{\percent} of TVL, the protocol auto-pauses.
+Signed JSON heat-maps report live liquidation pressure across interconnected protocols.  To prevent feedback loops, peers may impose a \SIrange{60}{120}{\second} cooldown period.  
+
+Systemic criticality for each node (e.g., a vault, position, or protocol address) is quantified using graph-based centrality.  
+One option is $k$-shell decomposition \parencite{battiston2012debtrank}, which identifies the structural core of the graph but incurs cubic complexity $\mathcal{O}(n^3)$ in the number of nodes $n$.  
+As a scalable alternative, criticality can be approximated using PageRank centrality \parencite{page1999pagerank}; the algorithm converges in $\mathcal{O}(m)$ per iteration, where $m$ is the number of edges in the liquidation correlation graph
+
+If the cumulative value of outer-shell nodes (i.e., low-degree participants) exceeds \SI{5}{\percent} of the protocol’s total value locked (TVL), automatic circuit breakers are triggered to pause liquidations.
 
 %=====================================================================%
 \section{Governance}
@@ -412,7 +415,6 @@ if outer-shell exposure exceeds \SI{5}{\percent} of TVL, the protocol auto-pause
 The proposed architecture delegates control of key risk parameters \((\kappa, Y, \psi, \delta)\) to an on-chain governance module, \texttt{RiskConfig}, which is secured by a 7-day timelock to allow community review and prevent instant changes.
 
 To ensure transparency and auditability, all stress-test notebooks and VaR analyses are permanently stored using decentralized, content-addressed systems such as Arweave or IPFS.\footnote{Risk analyses and stress-test notebooks are pinned using decentralized storage: Arweave for permanent ledger-backed publishing \parencite{williams2023arweave}, and IPFS for content-addressable versioning \parencite{benet2014ipfs}.}
-
 
 
 %=====================================================================%  
