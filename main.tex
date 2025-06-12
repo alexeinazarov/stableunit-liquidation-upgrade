@@ -55,7 +55,19 @@
 \setlength{\cftbeforesubsecskip}{2pt}
 \renewcommand{\cftsecfont}{\normalfont}
 \renewcommand{\cftsubsecfont}{\normalfont\itshape}
+%for theorems
+\usepackage{amsthm}  
+% Define the theorem environment
+\newtheorem{theorem}{Theorem}[section]  % Optional: [section] for numbering like 3.1, 3.2, etc.
+\newtheorem{corollary}[theorem]{Corollary}  % Shares counter with theorem
+\newtheorem{lemma}[theorem]{Lemma}
 
+% Optional: Define proof environment (already included in amsthm)
+
+\usepackage{minted} % Enables syntax highlighting for code
+\usepackage{xcolor} % Required for minted to color syntax
+\definecolor{codegray}{gray}{0.97} % Light gray background
+%%%
 
 % --------------------  BIBLIOGRAPHY (biblatex + biber) --------------------
 \usepackage[
@@ -266,16 +278,6 @@ P_{\text{clear}} = \max\left\{ b_j \in \mathcal{B} \,|\, b_j \geq P_{\text{reser
 \]
 where $b_{(k)}$ is the $k$-th highest bid. This bounds the winner's curse risk.
 
-\begin{listing}[htbp]
-\begin{lstlisting}[caption={Solidity pseudo-code: auction guard}]
-function fillOrder(uint id, uint bidPrice) external payable {
-    require(msg.value >= 0.01 ether);            // 1 % bond
-    require(block.number >= orders[id].reveal);  // sealed bid
-    require(bidPrice >= reservePrice);           // VaR floor
-    ...
-}
-\end{lstlisting}
-\end{listing}
 
 %=====================================================================%  
 \section{Trigger–Fill Separation and Keeper Prioritisation}
