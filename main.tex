@@ -314,7 +314,23 @@ To reflect load-driven latency, expected fill time decays with active TVL:
 \mathbb{E}[\tau_{\text{fill}}] = 60\,\text{s} \cdot \exp\left(-\lambda \sum \text{TVL}_{\text{active}}\right).
 \]
 This extends the exclusivity model of \textcite{stableunit2025spec} with congestion-aware timing.
-
+\textcolor{darkgreen}{The latency-decay coefficient \(\lambda_t\) is updated once per epoch \(\Delta\) (e.g.\ 900 blocks) via a proportional–integral (PI) controller:
+\[
+\lambda_{t+1} =
+\mathrm{clip}\!\Bigl(
+  \lambda_t + \kappa_P(\rho_t-\rho^\star)
+            + \kappa_I \textstyle\sum_{i\le t}(\rho_i-\rho^\star),
+  \lambda_{\min},\,\lambda_{\max}\Bigr),
+\]
+where:
+\begin{itemize}[itemsep=0pt,topsep=2pt,leftmargin=15pt]
+  \item \(\rho_t := F_{\text{late}} / F_{\text{total}}\) is the realised \emph{late-fill ratio} for epoch \(t\),
+  \item \(\rho^\star\) is the governance-set target (default \(5\%\)),
+  \item \(\kappa_P, \kappa_I \in \mathbb{R}_{\ge 0}\) are controller gains, and
+  \item \(\mathrm{clip}(x, a, b) := \max\{\min\{x, b\}, a\}\) ensures bounded updates.
+\end{itemize}
+Setting \(\kappa_P = \kappa_I = 0\) recovers the static form used in the baseline model.  
+For formal guarantees, see Appendix, Corollary~\ref{cor:tune-lambda}.}
 
 %=====================================================================%  
 \section{Reserve price \& oracle integrity}
