@@ -22,6 +22,8 @@
 \usepackage{enumitem}
 \usepackage[table]{xcolor}
 \usepackage{bookmark}
+\usepackage{xcolor}
+\definecolor{darkgreen}{HTML}{006400}
 
 \usepackage{listings}
 \lstset{
@@ -287,7 +289,11 @@ Inspired by StableUnit’s dual-bot architecture \parencite{stableunit2025spec},
 \end{enumerate}
 
 Priority is assigned using SuDAO's vote-escrow (ve-style) staking model, where keeper eligibility increases with lock duration and stake amount. 
-Each CDP is hashed to one of 21 keeper slots. Missed fills trigger a slashing penalty of \SI{10}{\percent} of current voting power.
+Each CDP is hashed to one of \textcolor{darkgreen}{$S_{t}$} privileged keeper slots\footnote{\textcolor{darkgreen}{%
+\(S_{t}\!\in\!\{2,4,8,16,32,64\}\) is the \emph{epoch-indexed slot cardinality} held in \texttt{RiskConfig.SLOT\_COUNT}.  
+A DAO vote (or the adaptive controller) may update \(S_{t}\) at the next epoch boundary, leaving earlier liquidations unaffected. Empirical guidance: \(\,2{\text{–}}4\) slots for proof-of-concept deployments; \(8{\text{–}}16\) once TVL surpasses \(\sim\$50\) M; \(32{\text{–}}64\) in high-frequency, HFT-keeper environments.  Slot routing is the constant-time hash  
+\(\mathrm{slotId}=\mathtt{keccak256(vaultId)}\bmod S_{t}\).  
+Because the queue is stored as a sparse mapping \texttt{mapping(uint256~=>~Slot)}, unclaimed indices consume \emph{zero} storage gas, so enlarging \(S_{t}\) does not penalise inactive slots while preserving backward compatibility for historical ones.}}. Missed fills trigger a slashing penalty of \SI{10}{\percent} of current voting power.
 
 \medskip
 
