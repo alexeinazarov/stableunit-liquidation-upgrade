@@ -134,7 +134,7 @@ The StableUnit protocol \parencite{stableunit2025spec} provides a heuristic liqu
 \midrule
 “Liquidations are done through market sales.” & \secref{sec:tranch} –- \secref{sec:auction}: replaced with liquidity-aware tranching and sealed-bid auctions to reduce price impact. \\
 “Price has a discount that gets bigger per block.” & \secref{sec:reserve}: replaced by fixed 99.9\% VaR haircut $(1 - \delta)$ to avoid spiral discounting. \\
-“Liquidator has 60 seconds to sell the collateral.” & \secref{sec:tranch}: 60-second window formalised using a rotating 21-slot queue with congestion-aware timing and slashing. \\
+“Liquidator has 60 seconds to sell the collateral.” & \secref{sec:tranch}: 60-second window formalised using a rotating \textcolor{darkgreen}{$S_{t}$}-slot queue with congestion-aware timing and slashing. \\
 “Trader bot monitors isLiquidateble().” & \secref{sec:bots}: architecture explicitly splits into \textit{Trigger bot} and \textit{Fill bot}, clarifying role separation. \\
 “Whitelist of stablecoins … to exchange the collateral.” & \secref{sec:reserve}: wrapped in zk-attested three-oracle median to defend against price feed manipulation. \\
 “Risks … cascade liquidation … chain reaction.” & \secref{sec:stress}: introduces $\kappa\sigma$ stress detection and GARCH-based volatility triggers. \\
@@ -170,7 +170,7 @@ Each upgrade responds directly to heuristic or fragile elements in the original 
 
   \item \textbf{Sealed-Bid Vickrey Auction} (\secref{sec:auction}): replaces priority gas wars with sealed-bid commitment, bid-bond deterrence, and second-price clearing—eliminating MEV and griefing.
 
-  \item \textbf{Trigger–Fill Separation \& Keeper Queue} (\secref{sec:bots}): formalizes the bot logic from the original spec as a ve-style prioritized 21-slot keeper ring with congestion-aware timing.
+  \item \textbf{Trigger–Fill Separation \& Keeper Queue} (\secref{sec:bots}): formalizes the bot logic from the original spec as a ve-style prioritized \textcolor{darkgreen}{$S_{t}$}-slot keeper ring with congestion-aware timing.
 
   \item \textbf{Dynamic Keeper Bounties} (\secref{sec:keeper}): replaces fixed 0.1\% liquidator fees with a diminishing-marginal payout curve, aligning incentives across vault sizes while capping micro-vault APRs.
 
@@ -296,7 +296,7 @@ Inspired by StableUnit’s dual-bot architecture \parencite{stableunit2025spec},
 Priority is assigned using SuDAO's vote-escrow (ve-style) staking model, where keeper eligibility increases with lock duration and stake amount. 
 Each CDP is hashed to one of \textcolor{darkgreen}{$S_{t}$} privileged keeper slots\footnote{\textcolor{darkgreen}{%
 \(S_{t}\!\in\!\{2,4,8,16,32,64\}\) is the \emph{epoch-indexed slot cardinality} held in \texttt{RiskConfig.SLOT\_COUNT}.  
-A DAO vote (or the adaptive controller) may update \(S_{t}\) at the next epoch boundary, leaving earlier liquidations unaffected. Empirical guidance: \(\,2{\text{–}}4\) slots for proof-of-concept deployments; \(8{\text{–}}16\) once TVL surpasses \(\sim\$50\) M; \(32{\text{–}}64\) in high-frequency, HFT-keeper environments.  Slot routing is the constant-time hash  
+A DAO vote (or the adaptive controller) may update \(S_{t}\) at the next epoch boundary, leaving earlier liquidations unaffected. Empirical guidance: \emph{2–4} slots for proof-of-concept deployments; \emph{8–16} once TVL surpasses \(\sim\$50\) M; \emph{32–64} in high-frequency, HFT-keeper environments.  Slot routing is the constant-time hash  
 \(\mathrm{slotId}=\mathtt{keccak256(vaultId)}\bmod S_{t}\).  
 Because the queue is stored as a sparse mapping \texttt{mapping(uint256~=>~Slot)}, unclaimed indices consume \emph{zero} storage gas, so enlarging \(S_{t}\) does not penalise inactive slots while preserving backward compatibility for historical ones.}}. Missed fills trigger a slashing penalty of \SI{10}{\percent} of current voting power.
 
@@ -314,7 +314,7 @@ To reflect load-driven latency, expected fill time decays with active TVL:
 \mathbb{E}[\tau_{\text{fill}}] = 60\,\text{s} \cdot \exp\left(-\lambda \sum \text{TVL}_{\text{active}}\right).
 \]
 This extends the exclusivity model of \textcite{stableunit2025spec} with congestion-aware timing.
-\textcolor{darkgreen}{The latency-decay coefficient \(\lambda_t\) is updated once per epoch \(\Delta\) (e.g.\ 900 blocks) via a proportional–integral (PI) controller:
+\textcolor{darkgreen}{The latency-decay coefficient \(\lambda_t\) is updated once per epoch \(\Delta\) (e.g.\ 900 blocks) via a proportional~–integral (PI) controller:
 \[
 \lambda_{t+1} =
 \mathrm{clip}\!\Bigl(
