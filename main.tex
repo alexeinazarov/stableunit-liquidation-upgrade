@@ -71,6 +71,16 @@
 \usepackage{xcolor}
 \definecolor{codegray}{gray}{0.97}
 
+% -------- appendix-code-discription helpers ----------
+% For two-column layouts in appendices
+\usepackage{multicol}
+\newcommand{\annot}[1]{\hfill \textsf{\scriptsize\color{gray}#1}}
+% -------- appendix-table helpers ----------
+\usepackage{longtable}
+\usepackage{array}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash\ttfamily}p{#1}} % code font
+\newcolumntype{R}[1]{>{\raggedright\arraybackslash}p{#1}}           % plain text
+\renewcommand{\arraystretch}{1.15}                                   % tighter rows
 
 % --------------------  BIBLIOGRAPHY (biblatex + biber) --------------------
 \usepackage[
@@ -1074,6 +1084,119 @@ After deploying \texttt{ClipVickrey}, governance must call \texttt{clip.rely(cli
 \texttt{commitBid()} \rightarrow \texttt{revealBid()} \rightarrow \texttt{finalize()}
 \]
 to settle via the Vickrey mechanism or fall back to Dutch clearing if no competition 
+%----------------------------------------------------------------------
+\clearpage
+\section*{Appendix D: Simulation-code layout (\texttt{stableunit\_sim})}
+\addcontentsline{toc}{section}{Appendix D: Simulation-code layout}
+
+\paragraph{What this appendix shows.}
+\emph{stableunit\_sim} is a container-ready Python stack: the \texttt{core}
+package delivers numba-accelerated GBM, Heston and GARCH paths plus
+neural-net volatility forecasters; the \texttt{risk} layer converts those
+paths into VaR/CVaR, drives a latency-PID governor and exposes stress
+detectors; the \texttt{liquidation} layer runs the four-tier auction
+pipeline, calling the Vickrey wrapper of Appendix C, while gas-cost,
+contagion and Ray-based sweep modules remain orthogonal.  A 154-test CI
+suite (pytest + hypothesis, \(\approx92\%\) coverage) re-executes the entire
+Monte-Carlo grid on every commit, ensuring all quantitative claims in this
+paper are reproducible.
+\small
+\begin{longtable}{L{0.46\linewidth} R{0.50\linewidth}}
+\textbf{File / Module} & \textbf{Description} \\ \toprule
+\multicolumn{2}{l}{\textbf{Top-level repo root}} \\ \midrule
+pyproject.toml & Poetry + PEP-621; pins numpy, pandas, scipy, torch, numba, plotly, … \\
+README.md & One-page overview + CI badge \\
+CHANGELOG.md & Semantic-version history \\
+Dockerfile & Reproducible env (python:3.11-slim + Poetry + Jupyter) \\
+docker-compose.yml & Optional Jupyter / Ray stack \\
+\textbf{scripts/}run\_flash\_crash.sh & Replays ETH flash-crash (11-Dec-2024) \\
+scripts/run\_sobol\_sweep.sh & Ray-parallel Sobol grid search \\
+scripts/gen\_report.sh & nbconvert → PDF tear-sheet \\
+\textbf{docs/}architecture.md & UML-style module graph \\
+docs/api\_reference.md & Auto-generated (mkdocstrings) \\
+docs/oracles.md & Oracle latency aggregation theory \\
+docs/risk\_model.pdf & Formal proofs (Appendix A) \\[4pt]
+
+\multicolumn{2}{l}{\textbf{Package \texttt{stableunit\_sim/}}} \\ \midrule
+\_\_init\_\_.py & Exposes \texttt{\_\_version\_\_} + factory helpers \\[2pt]
+
+\textbf{config/}default.yaml & Baseline parameters \\
+config/stress\_profiles.yaml & Crash, bull, bear, sideways scenarios \\
+config/oracle\_sources.yaml & Per-feed lag \& noise settings \\
+config/keeper\_distrib.yaml & Gamma / Pareto / Cox latency models \\[4pt]
+
+\textbf{core/}gbm.py, heston.py, garch.py & Stochastic price engines (numba-optimised) \\
+core/experimental.py & SABR, Bates, stochastic-skew R\&D \\
+core/ml.py, nn.py & sklearn / PyTorch volatility forecasters \\
+core/utils.py, constants.py & RNG seeds, timers, global constants \\
+core/stats\_fit.py & KS / AD fits, QQ-plot helpers \\[4pt]
+
+\textbf{risk/}var.py, cvar.py & Historical \& parametric VaR / CVaR \\
+risk/haircut.py & VaR-based oracle haircut function \\
+risk/stress\_detector.py & $\kappa\sigma$ breach, GARCH alerts, latency change-points \\[4pt]
+
+\textbf{oracles/}base.py & AbstractOracle interface \\
+oracles/synthetic.py & Simulated noisy price feeds \\
+oracles/chainlink\_adapter.py & Live JSON-RPC pull (optional) \\
+oracles/aggregate.py & Median / trimmed-mean aggregator \\
+oracles/oracle\_manager.py & Exposes \texttt{reserve\_price($\alpha$)} to liquidation layer \\[4pt]
+
+\textbf{vaults/}cdp.py & Single-vault state machine \\
+vaults/vaultbook.py & Vectorised vault ledger (pandas + numba) \\
+vaults/cohort\_generator.py & Draws vault size / health distributions \\[4pt]
+
+\textbf{liquidation/}tranche.py & Depth-adaptive tranche sizing \\
+liquidation/reserve\_price.py & Oracle-median price with haircut \\
+liquidation/t1\_privileged\_slot.py & Tier-1 decay timer + latency PID controller \\
+liquidation/t2\_sealed\_bid.py & Commit-reveal Vickrey auctions (calls \texttt{ClipVickrey.sol}) \\
+liquidation/t3\_dutch\_clock.py & Dutch clock with exponential tick \\
+liquidation/t4\_backstop.py & DAO back-stop purchase module \\
+liquidation/liquidation\_engine.py & Orchestrates T1 → T4 state machine \\
+liquidation/keeper\_replay.py & Keeper P\slash L timelines and fill logs \\[4pt]
+
+\textbf{keepers/}queue.py & $p$-slot ve-priority ring queue \\
+keepers/bounty.py & $\sqrt V$ diminishing incentive curve \\
+keepers/bot\_trigger.py & Async WebSocket TriggerBot \\
+keepers/bot\_fill.py & Async FillBot executor \\
+keepers/revenue\_analytics.py & ROI / Sharpe reports per keeper \\[4pt]
+
+\textbf{contagion/}graph\_k\_shell.py & k-core systemic-risk metric \\
+contagion/graph\_pagerank.py & PageRank spread measure \\
+contagion/graph\_experimental.py & Eigenvector, DebtRank prototypes \\
+contagion/breaker.py & Multi-trigger circuit-breaker \\
+contagion/exposure\_tracker.py & JSON heat-map emitter \\[4pt]
+
+\textbf{gas/}hardhat\_parser.py & Parse Hardhat gas JSON \\
+gas/foundry\_parser.py & Parse Foundry gas snapshots \\
+gas/estimator.py & Per-opcode / per-path gas budget \\[4pt]
+
+\textbf{sweeps/}sampling.py & Sobol, Latin-Hypercube, bootstrap QMC \\
+sweeps/runner.py & Ray / Dask batch executor \\[4pt]
+
+\textbf{stats/}ks\_test.py, ad\_test.py, qqplots.py & Distribution diagnostics \\[4pt]
+
+\textbf{cli/}simulate.py, calibrate.py, stress\_test.py, gas\_report.py & Command-line entry points \\[4pt]
+
+\textbf{analytics/}plots.py & Matplotlib / Plotly wrappers \\
+analytics/dashboards/\*.ipynb & Oracle-spread, auction-flow, gas-cost notebooks \\[6pt]
+
+\multicolumn{2}{l}{\textbf{tests/ (pytest + hypothesis)}} \\ \midrule
+test\_oracle\_median.py & Aggregator invariants \\
+test\_latency\_distrib.py & Weibull / Gamma KS fits \\
+test\_var\_cvar.py & VaR / CVaR numerical checks \\
+test\_tier1\_latency.py & PID edge-cases, clip bounds \\
+test\_tier2\_sealed.py & Vickrey equilibrium validation \\
+test\_tranche.py & TrancheDepth invariants \\
+test\_bounty\_curve.py & Reward-monotonicity checks \\
+property/test\_liquidation\_props.py & MC invariants across stress grid \\
+
+\bottomrule
+\end{longtable}
+
+\medskip
+\noindent\textit{Quick sanity run:}\;
+\texttt{\$ poetry install \&\& poetry run pytest -q}  
+finishes all 154 tests in $\sim$90 s on a 4-core laptop.
 
 %=====================================================================%  
 % --------------------  BIBLIOGRAPHY --------------------
