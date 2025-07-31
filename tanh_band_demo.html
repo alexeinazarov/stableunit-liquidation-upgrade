@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Tanh band demo — area/tail, r^N tail, bands, CSV</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root { --fg:#222; --muted:#666; --line:#ddd; }
+  html,body{margin:0;padding:0}
+  body{font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Arial,sans-serif;color:var(--fg);padding:18px}
+  h2{margin:10px 0 14px}
+  .row{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+  .card{border:1px solid #e6e6e6;border-radius:10px;padding:14px}
+  .ctrl{margin:10px 0}
+  .ctrl label{font-weight:600;display:block;margin-bottom:6px}
+  .ctrl .line{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .pill{background:#f5f5f5;border-radius:8px;padding:2px 6px;display:inline-block;margin-left:6px}
+  .small{font-size:12px;color:var(--muted)}
+  #plot{width:920px;height:520px}
+  button{padding:6px 10px;border:1px solid #bbb;border-radius:6px;background:#fafafa;cursor:pointer}
+  button:hover{background:#f0f0f0}
+</style>
+</head>
+<body>
+
+<div class="row" style="align-items:center">
+  <button id="btnCsvCurve">Download curve CSV</button>
+  <button id="btnCsvBands">Download bands CSV</button>
+</div>
+
+<h2>Single-tanh band vs exponential — with r<sup>N</sup> tail option and band overlays</h2>
+
+<div class="row">
+  <div class="card" style="min-width:320px;max-width:360px;">
+    <div class="ctrl">
+      <label>Constraint pair</label>
+      <div class="line">
+        <label><input type="radio" name="pair" value="area" checked> B(0)=1, ∫B=L</label>
+      </div>
+      <div class="line">
+        <label><input type="radio" name="pair" value="tail"> B(0)=1, B(1)=β</label>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label>k <span id="kval" class="pill"></span></label>
+      <input id="k" type="range" min="0.1" max="40" step="0.01" value="12">
+    </div>
+
+    <div class="ctrl">
+      <label>c <span id="cval" class="pill"></span></label>
+      <input id="c" type="range" min="0.02" max="0.98" step="0.001" value="0.40">
+    </div>
+
+    <div id="Lbox" class="ctrl">
+      <label>L (area) <span id="Lval" class="pill"></span></label>
+      <input id="L" type="range" min="0.50" max="0.99" step="0.0005" value="0.90">
+      <div class="small">Used when <b>B(0)=1, ∫B=L</b> is selected.</div>
+    </div>
+
+    <div id="betaG" class="ctrl">
+      <label>β source</label>
+      <div class="line">
+        <label><input type="radio" name="betasrc" value="manual" checked> manual</label>
+        <label><input type="radio" name="betasrc" value="rpow"> r<sup>N</sup></label>
+      </div>
+    </div>
+
+    <div id="betabox" class="ctrl">
+      <label>β = B(1) target <span id="betaval" class="pill"></span></label>
+      <input id="beta" type="range" min="0.35" max="0.99" step="0.001" value="0.65">
+      <div class="small">Used in <b>B(0)=1, B(1)=β</b> with <b>β source = manual</b>.</div>
+    </div>
+
+    <div id="rbox" class="ctrl" style="display:none">
+      <label>r (per band) <span id="rval" class="pill"></span></label>
+      <input id="r" type="range" min="0.95" max="0.9999" step="0.0001" value="0.99">
+      <div class="small">β is computed as r<sup>N</sup>. (Change to r<sup>N+1</sup> in <code>currentBeta()</code> if you want.)</div>
+    </div>
+
+    <div class="ctrl">
+      <label>N (bands) <span id="Nval" class="pill"></span></label>
+      <input id="N" type="range" min="2" max="200" step="1" value="50">
+      <div class="small">Used for x-band marks and β=r<sup>N</sup> if that mode is on.</div>
+    </div>
+
+    <div class="ctrl">
+      <label>Overlays</label>
+      <div class="line"><label><input type="checkbox" id="showCuts" checked> vertical bands (equal-area in x)</label></div>
+      <div class="line"><label><input type="checkbox" id="showH" checked> horizontal levels (y = B(x<sub>i</sub>))</label></div>
+      <div class="line"><label><input type="checkbox" id="showExp" checked> comparator exp(−x)</label></div>
+      <div class="line"><label><input type="checkbox" id="showBetaX"> comparator β<sup>x</sup></label></div>
+    </div>
+
+    <div class="ctrl">
+      <div><b>a</b> = <span id="aval"></span></div>
+      <div><b>b</b> = <span id="bval"></span></div>
+      <div><b>L</b> (computed) = <span id="Lout"></span></div>
+      <div><b>B(1)</b> = <span id="B1out"></span></div>
+      <div class="small" id="checkline"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="plot"></div>
+  </div>
+</div>
+
+<script>
+/* =================== NUMERICS =================== */
+function tanh(z){ return Math.tanh(z); }
+function cosh(z){ return Math.cosh(z); }
+function logcosh(z){
+  const az = Math.abs(z);
+  return (az < 20) ? Math.log(cosh(z)) : (az - Math.log(2));
+}
+/* B(x) = a + b*tanh(k(x-c)) */
+function Bx(x,a,b,k,c){ return a + b*tanh(k*(x-c)); }
+/* area from 0 to x */
+function area0x(x,a,b,k,c){
+  return a*x + (b/k)*(logcosh(k*(x-c)) - logcosh(-k*c));
+}
+/* combo for area calibration */
+function Dkc(k,c){
+  return tanh(k*c) + (logcosh(k*(1-c)) - logcosh(k*c))/k;
+}
+/* area-mode calibration */
+function calib_area(L,k,c){
+  const D = Dkc(k,c);
+  const b = (L - 1)/D;
+  const a = 1 + b*tanh(k*c);
+  return {a,b};
+}
+/* tail-mode calibration */
+function calib_tail(beta,k,c){
+  const S = tanh(k*c) + tanh(k*(1-c));
+  const b = (beta - 1)/S;
+  const a = 1 + b*tanh(k*c);
+  return {a,b};
+}
+function area01(a,b,k,c){
+  return a + (b/k)*(logcosh(k*(1-c)) - logcosh(k*c));
+}
+function B1(a,b,k,c){ return a + b*tanh(k*(1-c)); }
+/* monotone bisection for equal-area cuts */
+function find_x_for_area(target,a,b,k,c){
+  let lo=0, hi=1, f_lo=0, f_hi=area0x(1,a,b,k,c);
+  if (target<=f_lo) return 0;
+  if (target>=f_hi) return 1;
+  for (let it=0; it<64; ++it){
+    const mid=(lo+hi)/2;
+    const fm = area0x(mid,a,b,k,c);
+    if (fm < target){ lo=mid; } else { hi=mid; }
+  }
+  return (lo+hi)/2;
+}
+/* β chooser */
+function currentBeta(N){
+  const src = document.querySelector('input[name="betasrc"]:checked').value;
+  if (src==='rpow'){
+    const r = +document.getElementById('r').value;
+    return Math.pow(r, N);           // change to Math.pow(r, N+1) if you want β=r^(N+1)
+  }
+  return +document.getElementById('beta').value;
+}
+
+/* =================== UI + PLOT =================== */
+const el = (id)=>document.getElementById(id);
+
+function refreshBetaUI(){
+  const pair = document.querySelector('input[name="pair"]:checked').value;
+  const src  = document.querySelector('input[name="betasrc"]:checked').value;
+  el('Lbox').style.display    = (pair==='area') ? '' : 'none';
+  el('betaG').style.display   = (pair==='tail') ? '' : 'none';
+  el('betabox').style.display = (pair==='tail' && src==='manual') ? '' : 'none';
+  el('rbox').style.display    = (pair==='tail' && src==='rpow')   ? '' : 'none';
+}
+function updatePills(){
+  el('kval').textContent   = (+el('k').value).toFixed(2);
+  el('cval').textContent   = (+el('c').value).toFixed(3);
+  el('Lval').textContent   = (+el('L').value).toFixed(3);
+  el('Nval').textContent   = el('N').value;
+  el('rval').textContent   = (+el('r').value).toFixed(4);
+  if (document.querySelector('input[name="betasrc"]:checked').value==='manual'){
+    el('betaval').textContent = (+el('beta').value).toFixed(3);
+  }
+}
+
+function update(){
+  refreshBetaUI(); updatePills();
+
+  const pair = document.querySelector('input[name="pair"]:checked').value;
+  const k    = +el('k').value;
+  const c    = +el('c').value;
+  const N    = +el('N').value;
+  const beta = currentBeta(N);
+  const L    = +el('L').value;
+
+  // calibrate
+  let a,b;
+  if (pair==='area'){ ({a,b} = calib_area(L,k,c)); }
+  else              { ({a,b} = calib_tail(beta,k,c)); }
+
+  const Lout = area01(a,b,k,c);
+  const tail = B1(a,b,k,c);
+
+  el('aval').textContent  = a.toFixed(6);
+  el('bval').textContent  = b.toFixed(6);
+  el('Lout').textContent  = Lout.toFixed(6);
+  el('B1out').textContent = tail.toFixed(6);
+
+  if (pair==='area'){
+    const ok = Math.abs(Lout-L) < 1e-9;
+    el('checkline').textContent = ok ? "checks: B(0)=1, ∫B=L ✔"
+                                     : "note: ∫B differs from slider L";
+  } else {
+    const ok = Math.abs(tail-beta) < 1e-12;
+    el('checkline').textContent = ok ? "checks: B(0)=1, B(1)=β ✔"
+                                     : "note: B(1) differs from β";
+  }
+
+  // sample curves
+  const xs=[], yB=[], yE=[], yBx=[];
+  const M=801;
+  for (let i=0;i<M;i++){
+    const x=i/(M-1);
+    xs.push(x);
+    yB.push(Bx(x,a,b,k,c));
+    yE.push(Math.exp(-x));
+    yBx.push(Math.pow(beta,x));
+  }
+
+  const traces = [{
+    x:xs,y:yB,type:'scatter',mode:'lines',name:'B(x)',
+    line:{width:3,color:'#1f77b4'}
+  }];
+
+  if (el('showExp').checked){
+    traces.push({
+      x:xs,y:yE,type:'scatter',mode:'lines',name:'exp(−x)',
+      line:{width:2,color:'#999',dash:'dot'}
+    });
+  }
+  if (el('showBetaX').checked){
+    traces.push({
+      x:xs,y:yBx,type:'scatter',mode:'lines',name:'β^x',
+      line:{width:2,color:'#bb8844',dash:'dash'}
+    });
+  }
+
+  // equal-area x-cuts and horizontal levels
+  const showCuts = el('showCuts').checked;
+  const showH    = el('showH').checked;
+  window.__lastBands = { cuts:[], levels:[] }; // for CSV
+
+  if (N>=2){
+    const slices=[]; for (let i=1;i<N;i++) slices.push(i*Lout/N);
+    const cuts = slices.map(s => find_x_for_area(s,a,b,k,c));
+    window.__lastBands.cuts = cuts.slice();
+    if (showCuts){
+      for (const xi of cuts){
+        traces.push({
+          x:[xi,xi], y:[0,1], type:'scatter', mode:'lines',
+          line:{color:'#cccccc',width:1}, hoverinfo:'skip', showlegend:false
+        });
+      }
+    }
+    const levels=[Bx(0,a,b,k,c)];
+    for (const xi of cuts) levels.push(Bx(xi,a,b,k,c));
+    levels.push(Bx(1,a,b,k,c));
+    window.__lastBands.levels = levels.slice();
+    if (showH){
+      for (const y of levels){
+        traces.push({
+          x:[0,1], y:[y,y], type:'scatter', mode:'lines',
+          line:{color:'#dddddd',width:1,dash:'dot'},
+          hoverinfo:'skip', showlegend:false
+        });
+      }
+    }
+  }
+
+  Plotly.newPlot('plot', traces, {
+    margin:{l:50,r:20,t:28,b:45},
+    title:(pair==='area'?"B(0)=1, ∫B=L":"B(0)=1, B(1)=β") + " — tanh band",
+    xaxis:{title:'x',range:[0,1],zeroline:false},
+    yaxis:{title:'value',range:[0,1.05],zeroline:false},
+    legend:{orientation:'h',y:-0.18}
+  }, {displayModeBar:false});
+
+  // remember curve for CSV
+  window.__lastCurve = { xs, yB, yE, yBx, a, b, k, c, Lout, beta, tail };
+}
+
+/* =================== CSV EXPORT =================== */
+function download(filename, text){
+  const blob = new Blob([text], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a);
+  a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+document.getElementById('btnCsvCurve').addEventListener('click', ()=>{
+  if (!window.__lastCurve){ update(); }
+  const c = window.__lastCurve;
+  const beta = currentBeta(+el('N').value);
+  let csv = "# a="+c.a+" b="+c.b+" k="+c.k+" c="+c.c+" L="+c.Lout+" beta="+beta+" tail="+c.tail+"\n";
+  csv += "x,B(x),exp(-x),beta^x\n";
+  for (let i=0;i<c.xs.length;i++){
+    csv += `${c.xs[i]},${c.yB[i]},${c.yE[i]},${c.yBx[i]}\n`;
+  }
+  download("curve.csv", csv);
+});
+document.getElementById('btnCsvBands').addEventListener('click', ()=>{
+  if (!window.__lastBands){ update(); }
+  const b = window.__lastBands;
+  let csv = "cut_index,x_i,y_i\n";
+  // levels has N+1 entries (including 0 and 1)
+  for (let i=0;i<b.levels.length;i++){
+    const xi = (i===0)?0 : (i===b.levels.length-1?1:b.cuts[i-1]);
+    csv += `${i},${xi},${b.levels[i]}\n`;
+  }
+  download("bands.csv", csv);
+});
+
+/* =================== WIRING =================== */
+for (const name of ['pair','betasrc']){
+  document.querySelectorAll(`input[name="${name}"]`).forEach(n=>{
+    n.addEventListener('change', update);
+  });
+}
+['k','c','L','beta','r','N','showCuts','showH','showExp','showBetaX']
+  .forEach(id => document.getElementById(id).addEventListener('input', update));
+
+update();
+</script>
+</body>
+</html>
