@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Tanh bands demo — area/tail, r^N tail, bands, CSV</title>
+<title>Tanh bands — partitions, quadrature, and LLAMMA match</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
-  :root { --fg:#222; --muted:#666; --line:#ddd; }
+  :root { --fg:#222; --muted:#666; --line:#e6e6e6; }
   html,body{margin:0;padding:0}
   body{font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Arial,sans-serif;color:var(--fg);padding:18px}
   h2{margin:10px 0 14px}
   .row{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
-  .card{border:1px solid #e6e6e6;border-radius:10px;padding:14px}
+  .card{border:1px solid var(--line);border-radius:10px;padding:14px}
   .ctrl{margin:10px 0}
   .ctrl label{font-weight:600;display:block;margin-bottom:6px}
   .ctrl .line{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -20,6 +20,9 @@
   #plot{width:920px;height:520px}
   button{padding:6px 10px;border:1px solid #bbb;border-radius:6px;background:#fafafa;cursor:pointer}
   button:hover{background:#f0f0f0}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  input[type="number"]{width:90px;padding:3px}
+  .grid{display:grid;grid-template-columns:auto auto;gap:8px 10px;align-items:center}
 </style>
 </head>
 <body>
@@ -29,10 +32,10 @@
   <button id="btnCsvBands">Download bands CSV</button>
 </div>
 
-<h2>Single-tanh  vs exponential — with r<sup>N</sup> tail option and  overlays</h2>
+<h2>Tanh vs exponential — area/tail modes, partitions, quadrature, LLAMMA match</h2>
 
 <div class="row">
-  <div class="card" style="min-width:320px;max-width:360px;">
+  <div class="card" style="min-width:340px;max-width:420px;">
     <div class="ctrl">
       <label>Constraint pair</label>
       <div class="line">
@@ -44,18 +47,25 @@
     </div>
 
     <div class="ctrl">
-      <label>k <span id="kval" class="pill"></span></label>
-      <input id="k" type="range" min="0.1" max="40" step="0.01" value="12">
-    </div>
-
-    <div class="ctrl">
-      <label>c <span id="cval" class="pill"></span></label>
-      <input id="c" type="range" min="0.02" max="0.98" step="0.001" value="0.40">
+      <label>Shape knobs</label>
+      <div class="grid">
+        <div>k <span id="kval" class="pill"></span></div>
+        <div>
+          <input id="k" type="range" min="0.1" max="40" step="0.01" value="12">
+          <input id="kNum" type="number" step="0.01" value="12">
+        </div>
+        <div>c <span id="cval" class="pill"></span></div>
+        <div>
+          <input id="c" type="range" min="0.02" max="0.98" step="0.001" value="0.40">
+          <input id="cNum" type="number" step="0.001" value="0.40">
+        </div>
+      </div>
     </div>
 
     <div id="Lbox" class="ctrl">
       <label>L (area) <span id="Lval" class="pill"></span></label>
       <input id="L" type="range" min="0.50" max="0.99" step="0.0005" value="0.90">
+      <input id="LNum" type="number" step="0.0005" value="0.90">
       <div class="small">Used when <b>B(0)=1, ∫B=L</b> is selected.</div>
     </div>
 
@@ -70,27 +80,64 @@
     <div id="betabox" class="ctrl">
       <label>β = B(1) target <span id="betaval" class="pill"></span></label>
       <input id="beta" type="range" min="0.35" max="0.99" step="0.001" value="0.65">
-      <div class="small">Used in <b>B(0)=1, B(1)=β</b> with <b>β source = manual</b>.</div>
+      <input id="betaNum" type="number" step="0.001" value="0.65">
     </div>
 
     <div id="rbox" class="ctrl" style="display:none">
-      <label>r (per ) <span id="rval" class="pill"></span></label>
-      <input id="r" type="range" min="0.95" max="0.9999" step="0.0001" value="0.99">
-      <div class="small">β is computed as r<sup>N</sup>. (Change to r<sup>N+1</sup> in <code>currentBeta()</code> if you want.)</div>
+      <label>r, N for β=r<sup>N</sup></label>
+      <div class="grid">
+        <div>r <span id="rval" class="pill"></span></div>
+        <div>
+          <input id="r" type="range" min="0.95" max="0.9999" step="0.0001" value="0.99">
+          <input id="rNum" type="number" step="0.0001" value="0.99">
+        </div>
+        <div>N <span id="Nval" class="pill"></span></div>
+        <div>
+          <input id="N" type="range" min="2" max="200" step="1" value="50">
+          <input id="NNum" type="number" step="1" value="50">
+        </div>
+      </div>
+      <div class="small">β is computed as r<sup>N</sup>. (Change to r<sup>N+1</sup> in code if desired.)</div>
     </div>
 
     <div class="ctrl">
-      <label>N (s) <span id="Nval" class="pill"></span></label>
-      <input id="N" type="range" min="2" max="200" step="1" value="50">
-      <div class="small">Used for x- marks and β=r<sup>N</sup> if that mode is on.</div>
+      <label>Band partition</label>
+      <div class="line">
+        <label><input type="radio" name="part" value="equal-x" checked> equal-x (vertical cuts)</label>
+      </div>
+      <div class="line">
+        <label><input type="radio" name="part" value="equal-y-uniform"> equal-y (uniform in B)</label>
+      </div>
+      <div class="line">
+        <label><input type="radio" name="part" value="equal-y-beta"> equal-y (β-ladder)</label>
+      </div>
     </div>
 
     <div class="ctrl">
-      <label>Overlays</label>
-      <div class="line"><label><input type="checkbox" id="showCuts" checked> vertical s (equal-area in x)</label></div>
-      <div class="line"><label><input type="checkbox" id="showH" checked> horizontal levels (y = B(x<sub>i</sub>))</label></div>
-      <div class="line"><label><input type="checkbox" id="showExp" checked> comparator exp(−x)</label></div>
-      <div class="line"><label><input type="checkbox" id="showBetaX"> comparator β<sup>x</sup></label></div>
+      <label>Price curve for averages</label>
+      <div class="line">
+        <label><input type="radio" name="pcurve" value="exp" checked> exp(−x)</label>
+        <label><input type="radio" name="pcurve" value="beta"> β<sup>x</sup></label>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label>Quadrature per band</label>
+      <div class="line">
+        <label><input type="radio" name="quad" value="trap" checked> trapezoid</label>
+        <label><input type="radio" name="quad" value="mid"> midpoint</label>
+        <label><input type="radio" name="quad" value="simp"> Simpson</label>
+      </div>
+      <div class="small">Simpson is 4th-order on smooth curves; helpful for analytic estimates.</div>
+    </div>
+
+    <div class="ctrl">
+      <label>Match LLAMMA (area & tail) for current r,N</label>
+      <div class="line">
+        <button id="btnMatchK">Set L=∫β^x, solve k (keep c)</button>
+        <button id="btnMatchC">Set L=∫β^x, solve c (keep k)</button>
+      </div>
+      <div class="small" id="matchStatus"></div>
     </div>
 
     <div class="ctrl">
@@ -100,6 +147,8 @@
       <div><b>B(1)</b> = <span id="B1out"></span></div>
       <div class="small" id="checkline"></div>
     </div>
+
+    <div class="ctrl mono" id="quadReport"></div>
   </div>
 
   <div class="card">
@@ -109,6 +158,8 @@
 
 <script>
 /* =================== NUMERICS =================== */
+const TOL = 1e-12;
+
 function tanh(z){ return Math.tanh(z); }
 function cosh(z){ return Math.cosh(z); }
 function logcosh(z){
@@ -121,7 +172,7 @@ function Bx(x,a,b,k,c){ return a + b*tanh(k*(x-c)); }
 function area0x(x,a,b,k,c){
   return a*x + (b/k)*(logcosh(k*(x-c)) - logcosh(-k*c));
 }
-/* combo for area calibration */
+/* D(k,c) = tanh(kc) + [log cosh(k(1-c)) - log cosh(kc)]/k */
 function Dkc(k,c){
   return tanh(k*c) + (logcosh(k*(1-c)) - logcosh(k*c))/k;
 }
@@ -143,26 +194,121 @@ function area01(a,b,k,c){
   return a + (b/k)*(logcosh(k*(1-c)) - logcosh(k*c));
 }
 function B1(a,b,k,c){ return a + b*tanh(k*(1-c)); }
+
 /* monotone bisection for equal-area cuts */
 function find_x_for_area(target,a,b,k,c){
-  let lo=0, hi=1, f_lo=0, f_hi=area0x(1,a,b,k,c);
-  if (target<=f_lo) return 0;
-  if (target>=f_hi) return 1;
-  for (let it=0; it<64; ++it){
+  let lo=0, hi=1;
+  const f1=area0x(1,a,b,k,c);
+  if (target<=0) return 0;
+  if (target>=f1) return 1;
+  for (let it=0; it<80; ++it){
     const mid=(lo+hi)/2;
     const fm = area0x(mid,a,b,k,c);
     if (fm < target){ lo=mid; } else { hi=mid; }
   }
   return (lo+hi)/2;
 }
+
+/* bisection for B(x)=y (B monotone for b*k != 0) */
+function find_x_for_value(y,a,b,k,c){
+  let lo=0, hi=1, f_lo=Bx(0,a,b,k,c), f_hi=Bx(1,a,b,k,c);
+  const dec = (f_lo >= f_hi);
+  if (dec){ if (y >= f_lo) return 0; if (y <= f_hi) return 1; }
+  else     { if (y <= f_lo) return 0; if (y >= f_hi) return 1; }
+  for (let it=0; it<80; ++it){
+    const mid=(lo+hi)/2;
+    const fm = Bx(mid,a,b,k,c);
+    if ((dec && fm > y) || (!dec && fm < y)) lo=mid; else hi=mid;
+  }
+  return (lo+hi)/2;
+}
+
 /* β chooser */
 function currentBeta(N){
   const src = document.querySelector('input[name="betasrc"]:checked').value;
   if (src==='rpow'){
     const r = +document.getElementById('r').value;
-    return Math.pow(r, N);           // change to Math.pow(r, N+1) if you want β=r^(N+1)
+    return Math.pow(r, N);           // change to N+1 if desired
   }
   return +document.getElementById('beta').value;
+}
+function exp_area(beta){ return (1 - beta) / Math.log(1/beta); }
+
+/* price curves */
+function p_exp(x){ return Math.exp(-x); }
+function p_beta(x,beta){ return Math.pow(beta,x); }
+
+/* quadrature on [x0,x1] */
+function quad_band(p, x0, x1, rule){
+  if (rule==='mid'){
+    const m = 0.5*(x0+x1);
+    return p(m) * (x1 - x0);
+  } else if (rule==='simp'){
+    const m = 0.5*(x0+x1);
+    return ( (p(x0) + 4*p(m) + p(x1))/6 ) * (x1 - x0);
+  } else { // trap
+    return ( (p(x0) + p(x1))/2 ) * (x1 - x0);
+  }
+}
+
+/* ========== Root solving to match BOTH tail and area ========== */
+/* g_k(k) = B1(area-calibrated at L, k, c) - beta */
+function g_of_k(k, c, L, beta){
+  const {a,b} = calib_area(L,k,c);
+  return B1(a,b,k,c) - beta;
+}
+/* g_c(c) similarly */
+function g_of_c(c, k, L, beta){
+  const {a,b} = calib_area(L,k,c);
+  return B1(a,b,k,c) - beta;
+}
+
+/* bracket + bisection on k in [kmin,kmax] */
+function solve_k_for_tail(c, L, beta, kmin=0.1, kmax=60, steps=200){
+  let a = kmin, fa = g_of_k(a,c,L,beta);
+  for (let i=1;i<=steps;i++){
+    const b = kmin + (kmax-kmin)*i/steps;
+    const fb = g_of_k(b,c,L,beta);
+    if (fa===0) return a;
+    if (fb===0) return b;
+    if (fa*fb < 0){
+      // bisection
+      let lo=a, hi=b, flo=fa, fhi=fb;
+      for (let it=0; it<80; ++it){
+        const mid = 0.5*(lo+hi);
+        const fm  = g_of_k(mid,c,L,beta);
+        if (Math.abs(fm) < 1e-12) return mid;
+        if (flo*fm <= 0){ hi=mid; fhi=fm; } else { lo=mid; flo=fm; }
+      }
+      return 0.5*(lo+hi);
+    }
+    a=b; fa=fb;
+  }
+  return null; // no bracket found
+}
+
+/* bracket + bisection on c in [cmin,cmax] */
+function solve_c_for_tail(k, L, beta, cmin=0.02, cmax=0.98, steps=300){
+  let a = cmin, fa = g_of_c(a,k,L,beta);
+  for (let i=1;i<=steps;i++){
+    const b = cmin + (cmax-cmin)*i/steps;
+    const fb = g_of_c(b,k,L,beta);
+    if (fa===0) return a;
+    if (fb===0) return b;
+    if (fa*fb < 0){
+      // bisection
+      let lo=a, hi=b, flo=fa, fhi=fb;
+      for (let it=0; it<80; ++it){
+        const mid = 0.5*(lo+hi);
+        const fm  = g_of_c(mid,k,L,beta);
+        if (Math.abs(fm) < 1e-12) return mid;
+        if (flo*fm <= 0){ hi=mid; fhi=fm; } else { lo=mid; flo=fm; }
+      }
+      return 0.5*(lo+hi);
+    }
+    a=b; fa=fb;
+  }
+  return null;
 }
 
 /* =================== UI + PLOT =================== */
@@ -173,8 +319,18 @@ function refreshBetaUI(){
   const src  = document.querySelector('input[name="betasrc"]:checked').value;
   el('Lbox').style.display    = (pair==='area') ? '' : 'none';
   el('betaG').style.display   = (pair==='tail') ? '' : 'none';
-  el('betabox').style.display = (pair==='tail' && src==='manual') ? '' : 'none';
-  el('rbox').style.display    = (pair==='tail' && src==='rpow')   ? '' : 'none';
+  el('betabox').style.display = (pair==='tail' && src==='manual') ? '' : '';
+  el('rbox').style.display    = (pair==='tail' && src==='rpow')   ? '' : '';
+  // Keep β controls visible so users can see β even in area mode
+}
+function syncNum(idSlider,idNum,fmt){
+  const s=el(idSlider), n=el(idNum);
+  const val = +s.value;
+  n.value = (fmt?val.toFixed(fmt):val);
+}
+function syncSlider(idSlider,idNum){
+  const s=el(idSlider), n=el(idNum);
+  s.value = n.value;
 }
 function updatePills(){
   el('kval').textContent   = (+el('k').value).toFixed(2);
@@ -182,15 +338,17 @@ function updatePills(){
   el('Lval').textContent   = (+el('L').value).toFixed(3);
   el('Nval').textContent   = el('N').value;
   el('rval').textContent   = (+el('r').value).toFixed(4);
-  if (document.querySelector('input[name="betasrc"]:checked').value==='manual'){
-    el('betaval').textContent = (+el('beta').value).toFixed(3);
-  }
+  el('betaval').textContent= (+el('beta').value).toFixed(3);
 }
 
 function update(){
   refreshBetaUI(); updatePills();
 
   const pair = document.querySelector('input[name="pair"]:checked').value;
+  const part = document.querySelector('input[name="part"]:checked').value;
+  const psel = document.querySelector('input[name="pcurve"]:checked').value;
+  const qsel = document.querySelector('input[name="quad"]:checked').value;
+
   const k    = +el('k').value;
   const c    = +el('c').value;
   const N    = +el('N').value;
@@ -235,62 +393,84 @@ function update(){
     x:xs,y:yB,type:'scatter',mode:'lines',name:'B(x)',
     line:{width:3,color:'#1f77b4'}
   }];
-
-  if (el('showExp').checked){
-    traces.push({
-      x:xs,y:yE,type:'scatter',mode:'lines',name:'exp(−x)',
-      line:{width:2,color:'#999',dash:'dot'}
-    });
-  }
-  if (el('showBetaX').checked){
-    traces.push({
-      x:xs,y:yBx,type:'scatter',mode:'lines',name:'β^x',
-      line:{width:2,color:'#bb8844',dash:'dash'}
-    });
+  if (psel==='exp'){
+    traces.push({ x:xs,y:yE,type:'scatter',mode:'lines',name:'exp(−x)',
+      line:{width:2,color:'#999',dash:'dot'} });
+  } else {
+    traces.push({ x:xs,y:yBx,type:'scatter',mode:'lines',name:'β^x',
+      line:{width:2,color:'#bb8844',dash:'dash'} });
   }
 
-  // equal-area x-cuts and horizontal levels
-  const showCuts = el('showCuts').checked;
-  const showH    = el('showH').checked;
-  window.__lasts = { cuts:[], levels:[] }; // for CSV
-
-  if (N>=2){
-    const slices=[]; for (let i=1;i<N;i++) slices.push(i*Lout/N);
-    const cuts = slices.map(s => find_x_for_area(s,a,b,k,c));
-    window.__lasts.cuts = cuts.slice();
-    if (showCuts){
-      for (const xi of cuts){
-        traces.push({
-          x:[xi,xi], y:[0,1], type:'scatter', mode:'lines',
-          line:{color:'#cccccc',width:1}, hoverinfo:'skip', showlegend:false
-        });
+  // Build band boundaries
+  const cuts=[0], levels=[];
+  if (part==='equal-x'){
+    for (let i=1;i<N;i++) cuts.push(i/N);
+    cuts.push(1);
+    for (let i=0;i<=N;i++){
+      const xi = cuts[i];
+      levels.push(Bx(xi,a,b,k,c));
+    }
+  } else if (part==='equal-y-uniform'){
+    const y0 = Bx(0,a,b,k,c), y1 = Bx(1,a,b,k,c);
+    for (let i=0;i<=N;i++){
+      const yi = y0 + (i/N)*(y1 - y0);
+      levels.push(yi);
+      if (i>0){
+        const x_i = find_x_for_value(yi,a,b,k,c);
+        cuts.push(x_i);
       }
     }
-    const levels=[Bx(0,a,b,k,c)];
-    for (const xi of cuts) levels.push(Bx(xi,a,b,k,c));
-    levels.push(Bx(1,a,b,k,c));
-    window.__lastBands.levels = levels.slice();
-    if (showH){
-      for (const y of levels){
-        traces.push({
-          x:[0,1], y:[y,y], type:'scatter', mode:'lines',
-          line:{color:'#dddddd',width:1,dash:'dot'},
-          hoverinfo:'skip', showlegend:false
-        });
+    cuts[0]=0; cuts[N]=1;
+  } else { // equal-y-beta ladder
+    for (let i=0;i<=N;i++){
+      const yi = Math.pow(beta, i/N);
+      levels.push(yi);
+      if (i>0){
+        const x_i = find_x_for_value(yi,a,b,k,c);
+        cuts.push(x_i);
       }
     }
+    cuts[0]=0; cuts[N]=1;
   }
+
+  // Draw overlays
+  window.__lastBands = { cuts:cuts.slice(), levels:levels.slice() };
+
+  // vertical cuts
+  for (let i=1;i<N;i++){
+    traces.push({ x:[cuts[i],cuts[i]], y:[0,1], type:'scatter', mode:'lines',
+      line:{color:'#dddddd',width:1}, hoverinfo:'skip', showlegend:false });
+  }
+  // optional horizontal levels for visual reference (faint)
+  for (let i=0;i<=N;i++){
+    traces.push({ x:[0,1], y:[levels[i],levels[i]], type:'scatter', mode:'lines',
+      line:{color:'#efefef',width:1}, hoverinfo:'skip', showlegend:false });
+  }
+
+  // Quadrature report on chosen price curve
+  const pfun = (psel==='exp') ? p_exp : (x)=>p_beta(x,beta);
+  let qsum = 0;
+  for (let i=1;i<cuts.length;i++){
+    qsum += quad_band(pfun, cuts[i-1], cuts[i], qsel);
+  }
+  const exact = (psel==='exp') ? (1 - Math.exp(-1)) : ((1 - beta)/Math.log(1/beta));
+  const relErr = (qsum - exact)/exact;
+
+  el('quadReport').innerHTML =
+    `∫ price dx (quadrature): <b>${qsum.toFixed(9)}</b><br>` +
+    `∫ price dx (exact)     : <b>${exact.toFixed(9)}</b><br>` +
+    `relative error         : <b>${(100*relErr).toFixed(5)}%</b>`;
 
   Plotly.newPlot('plot', traces, {
     margin:{l:50,r:20,t:28,b:45},
-    title:(pair==='area'?"B(0)=1, ∫B=L":"B(0)=1, B(1)=β") + " — tanh band",
+    title:(pair==='area'?"B(0)=1, ∫B=L":"B(0)=1, B(1)=β") + " — bands & quadrature",
     xaxis:{title:'x',range:[0,1],zeroline:false},
     yaxis:{title:'value',range:[0,1.05],zeroline:false},
     legend:{orientation:'h',y:-0.18}
   }, {displayModeBar:false});
 
   // remember curve for CSV
-  window.__lastCurve = { xs, yB, yE, yBx, a, b, k, c, Lout, beta, tail };
+  window.__lastCurve = { xs, yB, yE, yBx, a, b, k, c, Lout, beta, tail, part, qsel, psel };
 }
 
 /* =================== CSV EXPORT =================== */
@@ -304,8 +484,8 @@ function download(filename, text){
 document.getElementById('btnCsvCurve').addEventListener('click', ()=>{
   if (!window.__lastCurve){ update(); }
   const c = window.__lastCurve;
-  const beta = currentBeta(+el('N').value);
-  let csv = "# a="+c.a+" b="+c.b+" k="+c.k+" c="+c.c+" L="+c.Lout+" beta="+beta+" tail="+c.tail+"\n";
+  let csv = "# a="+c.a+" b="+c.b+" k="+c.k+" c="+c.c+" L="+c.Lout+" beta="+c.beta+
+            " tail="+c.tail+" part="+c.part+" quad="+c.qsel+" p="+c.psel+"\n";
   csv += "x,B(x),exp(-x),beta^x\n";
   for (let i=0;i<c.xs.length;i++){
     csv += `${c.xs[i]},${c.yB[i]},${c.yE[i]},${c.yBx[i]}\n`;
@@ -315,23 +495,71 @@ document.getElementById('btnCsvCurve').addEventListener('click', ()=>{
 document.getElementById('btnCsvBands').addEventListener('click', ()=>{
   if (!window.__lastBands){ update(); }
   const b = window.__lastBands;
-  let csv = "cut_index,x_i,y_i\n";
-  // levels has N+1 entries (including 0 and 1)
+  let csv = "i,x_i,y_i\n";
   for (let i=0;i<b.levels.length;i++){
-    const xi = (i===0)?0 : (i===b.levels.length-1?1:b.cuts[i-1]);
+    const xi = (i===0)?0 : (i===b.levels.length-1?1:b.cuts[i]);
     csv += `${i},${xi},${b.levels[i]}\n`;
   }
   download("bands.csv", csv);
 });
 
-/* =================== WIRING =================== */
-for (const name of ['pair','betasrc']){
+/* =================== WIRING & NUMERIC INPUTS =================== */
+function bindSliderWithNumber(sliderId,numId,fmt){
+  el(sliderId).addEventListener('input', ()=>{ syncNum(sliderId,numId,fmt); update(); });
+  el(numId).addEventListener('change', ()=>{ syncSlider(sliderId,numId); update(); });
+}
+for (const name of ['pair','betasrc','part','pcurve','quad']){
   document.querySelectorAll(`input[name="${name}"]`).forEach(n=>{
     n.addEventListener('change', update);
   });
 }
-['k','c','L','beta','r','N','showCuts','showH','showExp','showBetaX']
-  .forEach(id => document.getElementById(id).addEventListener('input', update));
+bindSliderWithNumber('k','kNum',2);
+bindSliderWithNumber('c','cNum',3);
+bindSliderWithNumber('L','LNum',3);
+bindSliderWithNumber('beta','betaNum',3);
+bindSliderWithNumber('r','rNum',4);
+bindSliderWithNumber('N','NNum',0);
+
+/* =================== MATCH LLAMMA BUTTONS =================== */
+function currentBetaFromUI(){
+  const N = +el('N').value;
+  const r = +el('r').value;
+  return Math.pow(r,N);
+}
+document.getElementById('btnMatchK').addEventListener('click', ()=>{
+  const c = +el('c').value;
+  const N = +el('N').value;
+  const r = +el('r').value;
+  const beta = Math.pow(r,N);
+  const Lb = exp_area(beta);   // LLAMMA area
+  el('L').value = Lb; el('LNum').value = Lb.toFixed(6);
+
+  const ksol = solve_k_for_tail(c, Lb, beta, 0.1, 60, 240);
+  if (ksol===null){
+    el('matchStatus').textContent = "No k bracket found in [0.1,60] for current c; try another c.";
+  } else {
+    el('k').value = ksol; el('kNum').value = ksol.toFixed(4);
+    el('matchStatus').textContent = "Matched: set L=∫β^x and solved k so B(1)=β.";
+  }
+  update();
+});
+document.getElementById('btnMatchC').addEventListener('click', ()=>{
+  const k = +el('k').value;
+  const N = +el('N').value;
+  const r = +el('r').value;
+  const beta = Math.pow(r,N);
+  const Lb = exp_area(beta);   // LLAMMA area
+  el('L').value = Lb; el('LNum').value = Lb.toFixed(6);
+
+  const csol = solve_c_for_tail(k, Lb, beta, 0.02, 0.98, 300);
+  if (csol===null){
+    el('matchStatus').textContent = "No c bracket found in (0.02,0.98) for current k; try another k.";
+  } else {
+    el('c').value = csol; el('cNum').value = csol.toFixed(5);
+    el('matchStatus').textContent = "Matched: set L=∫β^x and solved c so B(1)=β.";
+  }
+  update();
+});
 
 update();
 </script>
